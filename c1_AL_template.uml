@@ -1,0 +1,150 @@
+@startuml
+' ========================================================================
+' PLANTILLA MÍNIMA - APPLICATION LAYER UML
+' Bounded Context: [NOMBRE_DEL_BOUNDED_CONTEXT]
+' Aggregate Principal: SampleAggregate
+' Producto: Spring Boot + AxonIQ
+' ========================================================================
+
+' ========================================================================
+' 1. COMMAND HANDLERS (Procesan Commands - Escritura)
+' ========================================================================
+class CrearSampleAggregateHandler {
+    - repository: SampleAggregateRepository
+    - eventPublisher: DomainEventPublisher
+    + handle(command: CrearSampleAggregateCommand): SampleAggregateId
+}
+
+class AprobarSampleAggregateHandler {
+    - repository: SampleAggregateRepository
+    - eventPublisher: DomainEventPublisher
+    + handle(command: AprobarSampleAggregateCommand): void
+}
+
+class RechazarSampleAggregateHandler {
+    - repository: SampleAggregateRepository
+    - eventPublisher: DomainEventPublisher
+    + handle(command: RechazarSampleAggregateCommand): void
+}
+
+' ========================================================================
+' 2. QUERY HANDLERS (Procesan Queries - Lectura)
+' ========================================================================
+class ObtenerSampleAggregateHandler {
+    - repository: SampleAggregateRepository
+    + handle(query: ObtenerSampleAggregateQuery): SampleAggregateDTO
+}
+
+class ListarSampleAggregatesHandler {
+    - repository: SampleAggregateRepository
+    + handle(query: ListarSampleAggregatesQuery): List<SampleAggregateDTO>
+}
+
+' ========================================================================
+' 3. DTOS (Data Transfer Objects)
+' ========================================================================
+class SampleAggregateDTO {
+    - id: String
+    - entidadRelacionadaId: String
+    - estado: String
+    - fechaCreacion: Date
+    - fechaResolucion: Date
+    - observaciones: String
+    + fromDomain(aggregate: SampleAggregate): SampleAggregateDTO
+}
+
+' ========================================================================
+' 4. DOMAIN EVENT PUBLISHER (Publica eventos al Message Broker)
+' ========================================================================
+interface DomainEventPublisher {
+    + publish(event: Object): void
+}
+
+class RabbitMQEventPublisher {
+    - rabbitTemplate: RabbitTemplate
+    - exchange: String
+    + publish(event: Object): void
+}
+
+' ========================================================================
+' 5. DOMAIN EVENT LISTENER (Escucha eventos para acciones secundarias)
+' ========================================================================
+class SampleAggregateEventListener {
+    - notificationService: NotificationService
+    + on(event: SampleAggregateAprobadoEvent): void
+    + on(event: SampleAggregateRechazadoEvent): void
+}
+
+' ========================================================================
+' 6. APPLICATION SERVICE (Opcional - para casos de uso complejos)
+' ========================================================================
+class SampleAggregateApplicationService {
+    - repository: SampleAggregateRepository
+    - eventPublisher: DomainEventPublisher
+    - externalService: ExternalServiceClient
+    + crearSolicitud(command: CrearSampleAggregateCommand): SampleAggregateId
+    + aprobarSolicitud(command: AprobarSampleAggregateCommand): void
+    + rechazarSolicitud(command: RechazarSampleAggregateCommand): void
+    + obtenerPorId(query: ObtenerSampleAggregateQuery): SampleAggregateDTO
+}
+
+' ========================================================================
+' 7. EXTERNAL SERVICE (Integración con sistemas externos)
+' ========================================================================
+interface ExternalServiceClient {
+    + validarCobertura(id: String): boolean
+}
+
+class SitedsClient {
+    - restTemplate: RestTemplate
+    - baseUrl: String
+    + validarCobertura(id: String): boolean
+}
+
+' ========================================================================
+' 8. RELATIONSHIPS
+' ========================================================================
+
+' Command Handlers usan Repository y EventPublisher
+CrearSampleAggregateHandler --> SampleAggregateRepository
+CrearSampleAggregateHandler --> DomainEventPublisher
+
+AprobarSampleAggregateHandler --> SampleAggregateRepository
+AprobarSampleAggregateHandler --> DomainEventPublisher
+
+RechazarSampleAggregateHandler --> SampleAggregateRepository
+RechazarSampleAggregateHandler --> DomainEventPublisher
+
+' Query Handlers usan Repository
+ObtenerSampleAggregateHandler --> SampleAggregateRepository
+ListarSampleAggregatesHandler --> SampleAggregateRepository
+
+' DTO se relaciona con el dominio (transformación)
+SampleAggregateDTO ..> SampleAggregate : transforma >
+
+' Event Publisher implementa interface
+RabbitMQEventPublisher ..|> DomainEventPublisher
+
+' Event Listener escucha eventos
+SampleAggregateEventListener --> DomainEventPublisher : escucha >
+
+' Application Service usa Repository, EventPublisher y ExternalService
+SampleAggregateApplicationService --> SampleAggregateRepository
+SampleAggregateApplicationService --> DomainEventPublisher
+SampleAggregateApplicationService --> ExternalServiceClient
+
+' External Service implementa interface
+SitedsClient ..|> ExternalServiceClient
+
+' ========================================================================
+' 9. STEREOTYPES
+' ========================================================================
+note top of CrearSampleAggregateHandler : <<Command Handler>>
+note top of ObtenerSampleAggregateHandler : <<Query Handler>>
+note top of SampleAggregateDTO : <<DTO>>
+note top of DomainEventPublisher : <<Domain Service>>
+note top of SampleAggregateEventListener : <<Event Listener>>
+note top of SampleAggregateApplicationService : <<Application Service>>
+note top of ExternalServiceClient : <<External Service>>
+
+@enduml
