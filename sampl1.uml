@@ -1,0 +1,479 @@
+@startuml
+' ========================================================================
+' Título: Domain Layer UML Class Diagram
+' Bounded Context: Gestión de Cartas de Garantía
+' Producto: Spring Boot + AxonIQ (CQRS/Event Sourcing)
+' ========================================================================
+
+' ========================================================================
+' ENUMS
+' ========================================================================
+enum EstadoCarta {
+    SOLICITADA
+    EN_VALIDACION
+    EN_REVISION
+    OBSERVADA
+    APROBADA
+    RECHAZADA
+}
+
+enum TipoProcedimiento {
+    BAJA_COMPLEJIDAD
+    MEDIANA_COMPLEJIDAD
+    ALTA_COMPLEJIDAD
+}
+
+enum Dictamen {
+    APROBADO
+    RECHAZADO
+    OBSERVADO
+}
+
+' ========================================================================
+' VALUE OBJECTS
+' ========================================================================
+class CartaGarantiaId {
+    - value: UUID
+    + equals(obj: Object): boolean
+    + hashCode(): int
+}
+
+class PacienteId {
+    - value: UUID
+    + equals(obj: Object): boolean
+    + hashCode(): int
+}
+
+class ClinicaId {
+    - value: UUID
+    + equals(obj: Object): boolean
+    + hashCode(): int
+}
+
+class MedicoId {
+    - value: UUID
+    + equals(obj: Object): boolean
+    + hashCode(): int
+}
+
+class RevisionMedicaId {
+    - value: UUID
+    + equals(obj: Object): boolean
+    + hashCode(): int
+}
+
+class Procedimiento {
+    - codigo: String
+    - nombre: String
+    - tipo: TipoProcedimiento
+    - complejidad: int
+    + getCodigo(): String
+    + getNombre(): String
+    + getTipo(): TipoProcedimiento
+    + getComplejidad(): int
+}
+
+class Money {
+    - amount: BigDecimal
+    - currency: String
+    + add(other: Money): Money
+    + subtract(other: Money): Money
+    + multiply(multiplier: BigDecimal): Money
+    + isGreaterThan(other: Money): boolean
+    + isLessThan(other: Money): boolean
+}
+
+' ========================================================================
+' ENTITIES
+' ========================================================================
+class RevisionMedica {
+    - id: RevisionMedicaId
+    - medicoId: MedicoId
+    - fechaRevision: LocalDateTime
+    - dictamen: Dictamen
+    - comentarios: String
+    + generar(medicoId: MedicoId, dictamen: Dictamen, comentarios: String): RevisionMedica
+    + getDictamen(): Dictamen
+    + getComentarios(): String
+}
+
+' ========================================================================
+' AGGREGATE ROOT
+' ========================================================================
+class CartaGarantia {
+    - id: CartaGarantiaId
+    - pacienteId: PacienteId
+    - clinicaId: ClinicaId
+    - procedimiento: Procedimiento
+    - costoEstimado: Money
+    - estado: EstadoCarta
+    - fechaSolicitud: LocalDateTime
+    - fechaResolucion: LocalDateTime
+    - observaciones: String
+    - revisiones: List<RevisionMedica>
+    - version: Long
+    + solicitar(pacienteId: PacienteId, clinicaId: ClinicaId, procedimiento: Procedimiento, costoEstimado: Money): void
+    + validarCobertura(coberturaValida: boolean): void
+    + asignarRevisor(medicoId: MedicoId): void
+    + aprobar(observaciones: String): void
+    + rechazar(motivo: String): void
+    + observar(comentarios: String): void
+    + getEstado(): EstadoCarta
+    + esAprobada(): boolean
+    + esRechazada(): boolean
+    + getRevisiones(): List<RevisionMedica>
+}
+
+' ========================================================================
+' COMMANDS
+' ========================================================================
+class SolicitarCartaCommand {
+    - pacienteId: PacienteId
+    - clinicaId: ClinicaId
+    - procedimiento: Procedimiento
+    - costoEstimado: Money
+    + getPacienteId(): PacienteId
+    + getClinicaId(): ClinicaId
+    + getProcedimiento(): Procedimiento
+    + getCostoEstimado(): Money
+}
+
+class AprobarCartaCommand {
+    - cartaId: CartaGarantiaId
+    - observaciones: String
+    + getCartaId(): CartaGarantiaId
+    + getObservaciones(): String
+}
+
+class RechazarCartaCommand {
+    - cartaId: CartaGarantiaId
+    - motivo: String
+    + getCartaId(): CartaGarantiaId
+    + getMotivo(): String
+}
+
+class ObservarCartaCommand {
+    - cartaId: CartaGarantiaId
+    - comentarios: String
+    + getCartaId(): CartaGarantiaId
+    + getComentarios(): String
+}
+
+class AsignarRevisorCommand {
+    - cartaId: CartaGarantiaId
+    - medicoId: MedicoId
+    + getCartaId(): CartaGarantiaId
+    + getMedicoId(): MedicoId
+}
+
+' ========================================================================
+' QUERIES
+' ========================================================================
+class ObtenerCartaQuery {
+    - cartaId: CartaGarantiaId
+    + getCartaId(): CartaGarantiaId
+}
+
+class ListarCartasQuery {
+    - pacienteId: PacienteId
+    - fechaInicio: LocalDateTime
+    - fechaFin: LocalDateTime
+    + getPacienteId(): PacienteId
+    + getFechaInicio(): LocalDateTime
+    + getFechaFin(): LocalDateTime
+}
+
+class ListarPorEstadoQuery {
+    - estado: EstadoCarta
+    + getEstado(): EstadoCarta
+}
+
+class ListarPorClinicaQuery {
+    - clinicaId: ClinicaId
+    + getClinicaId(): ClinicaId
+}
+
+' ========================================================================
+' DOMAIN EVENTS
+' ========================================================================
+class CartaSolicitadaEvent {
+    - cartaId: CartaGarantiaId
+    - pacienteId: PacienteId
+    - clinicaId: ClinicaId
+    - fechaSolicitud: LocalDateTime
+    + getCartaId(): CartaGarantiaId
+    + getPacienteId(): PacienteId
+    + getClinicaId(): ClinicaId
+    + getFechaSolicitud(): LocalDateTime
+}
+
+class CartaValidadaEvent {
+    - cartaId: CartaGarantiaId
+    - coberturaValida: boolean
+    - fechaValidacion: LocalDateTime
+    + getCartaId(): CartaGarantiaId
+    + isCoberturaValida(): boolean
+    + getFechaValidacion(): LocalDateTime
+}
+
+class CartaAsignadaEvent {
+    - cartaId: CartaGarantiaId
+    - medicoId: MedicoId
+    - fechaAsignacion: LocalDateTime
+    + getCartaId(): CartaGarantiaId
+    + getMedicoId(): MedicoId
+    + getFechaAsignacion(): LocalDateTime
+}
+
+class CartaAprobadaEvent {
+    - cartaId: CartaGarantiaId
+    - fechaResolucion: LocalDateTime
+    - observaciones: String
+    + getCartaId(): CartaGarantiaId
+    + getFechaResolucion(): LocalDateTime
+    + getObservaciones(): String
+}
+
+class CartaRechazadaEvent {
+    - cartaId: CartaGarantiaId
+    - fechaResolucion: LocalDateTime
+    - motivo: String
+    + getCartaId(): CartaGarantiaId
+    + getFechaResolucion(): LocalDateTime
+    + getMotivo(): String
+}
+
+class CartaObservadaEvent {
+    - cartaId: CartaGarantiaId
+    - fechaEvento: LocalDateTime
+    - comentarios: String
+    + getCartaId(): CartaGarantiaId
+    + getFechaEvento(): LocalDateTime
+    + getComentarios(): String
+}
+
+' ========================================================================
+' REPOSITORY
+' ========================================================================
+interface CartaGarantiaRepository {
+    + save(carta: CartaGarantia): void
+    + findById(id: CartaGarantiaId): Optional<CartaGarantia>
+    + findByPacienteId(pacienteId: PacienteId): List<CartaGarantia>
+    + findByEstado(estado: EstadoCarta): List<CartaGarantia>
+    + findByClinicaId(clinicaId: ClinicaId): List<CartaGarantia>
+    + findByMedicoId(medicoId: MedicoId): List<CartaGarantia>
+    + delete(id: CartaGarantiaId): void
+}
+
+' ========================================================================
+' COMMAND HANDLERS
+' ========================================================================
+interface CommandHandler<T> {
+    + handle(command: T): void
+}
+
+class SolicitarCartaHandler {
+    - repository: CartaGarantiaRepository
+    - eventPublisher: EventPublisher
+    + handle(command: SolicitarCartaCommand): void
+}
+
+class AprobarCartaHandler {
+    - repository: CartaGarantiaRepository
+    - eventPublisher: EventPublisher
+    + handle(command: AprobarCartaCommand): void
+}
+
+class RechazarCartaHandler {
+    - repository: CartaGarantiaRepository
+    - eventPublisher: EventPublisher
+    + handle(command: RechazarCartaCommand): void
+}
+
+class ObservarCartaHandler {
+    - repository: CartaGarantiaRepository
+    - eventPublisher: EventPublisher
+    + handle(command: ObservarCartaCommand): void
+}
+
+class AsignarRevisorHandler {
+    - repository: CartaGarantiaRepository
+    - eventPublisher: EventPublisher
+    + handle(command: AsignarRevisorCommand): void
+}
+
+' ========================================================================
+' QUERY HANDLERS
+' ========================================================================
+interface QueryHandler<T, R> {
+    + handle(query: T): R
+}
+
+class ObtenerCartaHandler {
+    - repository: CartaGarantiaRepository
+    + handle(query: ObtenerCartaQuery): Optional<CartaGarantia>
+}
+
+class ListarCartasHandler {
+    - repository: CartaGarantiaRepository
+    + handle(query: ListarCartasQuery): List<CartaGarantia>
+}
+
+class ListarPorEstadoHandler {
+    - repository: CartaGarantiaRepository
+    + handle(query: ListarPorEstadoQuery): List<CartaGarantia>
+}
+
+class ListarPorClinicaHandler {
+    - repository: CartaGarantiaRepository
+    + handle(query: ListarPorClinicaQuery): List<CartaGarantia>
+}
+
+' ========================================================================
+' EVENT PUBLISHER
+' ========================================================================
+interface EventPublisher {
+    + publish(event: Object): void
+}
+
+' ========================================================================
+' RELATIONSHIPS
+' ========================================================================
+
+' Aggregate Root contiene Entities
+CartaGarantia "1" *-- "0..*" RevisionMedica : contiene >
+
+' Aggregate Root usa Value Objects
+CartaGarantia --> CartaGarantiaId
+CartaGarantia --> PacienteId
+CartaGarantia --> ClinicaId
+CartaGarantia --> Procedimiento
+CartaGarantia --> Money
+CartaGarantia --> EstadoCarta
+
+' RevisionMedica usa Value Objects
+RevisionMedica --> RevisionMedicaId
+RevisionMedica --> MedicoId
+RevisionMedica --> Dictamen
+
+' Procedimiento usa Enum
+Procedimiento --> TipoProcedimiento
+
+' Commands usan Value Objects
+SolicitarCartaCommand --> PacienteId
+SolicitarCartaCommand --> ClinicaId
+SolicitarCartaCommand --> Procedimiento
+SolicitarCartaCommand --> Money
+
+AprobarCartaCommand --> CartaGarantiaId
+RechazarCartaCommand --> CartaGarantiaId
+ObservarCartaCommand --> CartaGarantiaId
+AsignarRevisorCommand --> CartaGarantiaId
+AsignarRevisorCommand --> MedicoId
+
+' Queries usan Value Objects y Enums
+ObtenerCartaQuery --> CartaGarantiaId
+ListarCartasQuery --> PacienteId
+ListarPorEstadoQuery --> EstadoCarta
+ListarPorClinicaQuery --> ClinicaId
+
+' Domain Events usan Value Objects
+CartaSolicitadaEvent --> CartaGarantiaId
+CartaSolicitadaEvent --> PacienteId
+CartaSolicitadaEvent --> ClinicaId
+
+CartaValidadaEvent --> CartaGarantiaId
+CartaAsignadaEvent --> CartaGarantiaId
+CartaAsignadaEvent --> MedicoId
+CartaAprobadaEvent --> CartaGarantiaId
+CartaRechazadaEvent --> CartaGarantiaId
+CartaObservadaEvent --> CartaGarantiaId
+
+' Repository con Aggregate Root
+CartaGarantiaRepository ..> CartaGarantia : gestiona >
+CartaGarantiaRepository ..> CartaGarantiaId
+CartaGarantiaRepository ..> PacienteId
+CartaGarantiaRepository ..> ClinicaId
+CartaGarantiaRepository ..> EstadoCarta
+CartaGarantiaRepository ..> MedicoId
+
+' Command Handlers usan Repository y EventPublisher
+SolicitarCartaHandler ..> CartaGarantiaRepository : usa >
+SolicitarCartaHandler ..> EventPublisher : usa >
+SolicitarCartaHandler ..> SolicitarCartaCommand : maneja >
+
+AprobarCartaHandler ..> CartaGarantiaRepository : usa >
+AprobarCartaHandler ..> EventPublisher : usa >
+AprobarCartaHandler ..> AprobarCartaCommand : maneja >
+
+RechazarCartaHandler ..> CartaGarantiaRepository : usa >
+RechazarCartaHandler ..> EventPublisher : usa >
+RechazarCartaHandler ..> RechazarCartaCommand : maneja >
+
+ObservarCartaHandler ..> CartaGarantiaRepository : usa >
+ObservarCartaHandler ..> EventPublisher : usa >
+ObservarCartaHandler ..> ObservarCartaCommand : maneja >
+
+AsignarRevisorHandler ..> CartaGarantiaRepository : usa >
+AsignarRevisorHandler ..> EventPublisher : usa >
+AsignarRevisorHandler ..> AsignarRevisorCommand : maneja >
+
+' Query Handlers usan Repository
+ObtenerCartaHandler ..> CartaGarantiaRepository : usa >
+ObtenerCartaHandler ..> ObtenerCartaQuery : maneja >
+
+ListarCartasHandler ..> CartaGarantiaRepository : usa >
+ListarCartasHandler ..> ListarCartasQuery : maneja >
+
+ListarPorEstadoHandler ..> CartaGarantiaRepository : usa >
+ListarPorEstadoHandler ..> ListarPorEstadoQuery : maneja >
+
+ListarPorClinicaHandler ..> CartaGarantiaRepository : usa >
+ListarPorClinicaHandler ..> ListarPorClinicaQuery : maneja >
+
+' Command Handlers implementan interface
+SolicitarCartaHandler ..|> CommandHandler
+AprobarCartaHandler ..|> CommandHandler
+RechazarCartaHandler ..|> CommandHandler
+ObservarCartaHandler ..|> CommandHandler
+AsignarRevisorHandler ..|> CommandHandler
+
+' Query Handlers implementan interface
+ObtenerCartaHandler ..|> QueryHandler
+ListarCartasHandler ..|> QueryHandler
+ListarPorEstadoHandler ..|> QueryHandler
+ListarPorClinicaHandler ..|> QueryHandler
+
+' ========================================================================
+' NOTES / STEREOTYPES
+' ========================================================================
+note top of CartaGarantia : <<Aggregate Root>>\nEntidad principal que\ngarantiza la consistencia\ntransaccional del proceso
+
+note top of RevisionMedica : <<Entity>>\nEntidad hija que registra\ncada revisión médica
+
+note left of CartaGarantiaId : <<Value Object>>
+note left of PacienteId : <<Value Object>>
+note left of ClinicaId : <<Value Object>>
+note left of MedicoId : <<Value Object>>
+note left of RevisionMedicaId : <<Value Object>>
+note left of Procedimiento : <<Value Object>>
+note left of Money : <<Value Object>>
+
+note top of SolicitarCartaCommand : <<Command>>\nIntención de escritura
+note top of ObtenerCartaQuery : <<Query>>\nIntención de lectura
+
+note top of CartaSolicitadaEvent : <<Domain Event>>\nEvento de dominio para\ntrazabilidad y comunicación\nasíncrona
+
+note top of CartaGarantiaRepository : <<Repository>>\nAbstrae la persistencia\ndel Aggregate Root
+
+note top of EventPublisher : <<Domain Service>>\nPublica eventos de dominio\nhacia el Message Broker
+
+' ========================================================================
+' STEREOTYPES VISUALES CON << >> 
+' ========================================================================
+' Nota: PlantUML no permite estereotipos visuales en clases,
+' pero se pueden agregar como <<texto>> en el nombre o con notas.
+' Para mejor visualización, considera usar:
+'   - Colores en tu herramienta (ej. azul para Aggregate Root)
+'   - Notas como las agregadas arriba
+@enduml
