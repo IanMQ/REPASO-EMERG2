@@ -1,0 +1,128 @@
+@startuml
+' ========================================================================
+' APPLICATION LAYER - PLANTILLA ULTRA BÁSICA
+' ========================================================================
+' 
+' 📌 CÓMO USAR:
+'   1. Usa los mismos nombres que en Domain Layer
+'   2. Reemplaza "MainAggregate" por tu entidad principal
+'   3. Reemplaza "MainConcept" por tu Value Object
+'   4. Elimina [OPCIONAL] si no los necesitas
+' ========================================================================
+
+' ========================================================================
+' 1. COMMAND HANDLERS (1 por cada Command)
+' ========================================================================
+class CrearMainHandler {
+    - repository: MainRepository
+    - eventPublisher: DomainEventPublisher
+    + handle(command: CrearMainCommand): MainId
+}
+
+class AprobarMainHandler {
+    - repository: MainRepository
+    - eventPublisher: DomainEventPublisher
+    + handle(command: AprobarMainCommand): void
+}
+
+class RechazarMainHandler {
+    - repository: MainRepository
+    - eventPublisher: DomainEventPublisher
+    + handle(command: RechazarMainCommand): void
+}
+
+' ========================================================================
+' 2. QUERY HANDLERS (1 por cada Query)
+' ========================================================================
+class ObtenerMainHandler {
+    - repository: MainRepository
+    + handle(query: ObtenerMainQuery): MainDTO
+}
+
+class ListarMainHandler {
+    - repository: MainRepository
+    + handle(query: ListarMainQuery): List<MainDTO>
+}
+
+' ========================================================================
+' 3. DTO (SOLO 1 - El principal)
+' ========================================================================
+class MainDTO {
+    - id: String
+    - relatedId: String
+    - atributo1: String
+    - atributo2: Integer
+    - estado: String
+    - fechaCreacion: Date
+    - observaciones: String
+    + fromDomain(aggregate: MainAggregate): MainDTO
+}
+
+' ========================================================================
+' 4. EVENT PUBLISHER (SOLO 1 INTERFAZ)
+' ========================================================================
+interface DomainEventPublisher {
+    + publish(event: Object): void
+}
+
+' ========================================================================
+' 5. EVENT LISTENER (OPCIONAL - 1 solo si hay eventos)
+' ========================================================================
+class MainEventListener {
+    - notificationService: NotificationService
+    + on(event: MainAprobadoEvent): void
+    + on(event: MainRechazadoEvent): void
+}
+
+' ========================================================================
+' 6. INFRASTRUCTURE SERVICE (OPCIONAL - Solo si hay integración externa)
+' ========================================================================
+interface NotificationService {
+    + sendEmail(to: String, subject: String, body: String): void
+}
+
+' ========================================================================
+' 7. APPLICATION SERVICE (OPCIONAL - Solo si hay lógica compleja)
+' ========================================================================
+class MainApplicationService {
+    - repository: MainRepository
+    - eventPublisher: DomainEventPublisher
+    + crear(command: CrearMainCommand): MainId
+    + aprobar(command: AprobarMainCommand): void
+    + obtener(query: ObtenerMainQuery): MainDTO
+}
+
+' ========================================================================
+' 8. RELACIONES (MÍNIMO INDISPENSABLE)
+' ========================================================================
+CrearMainHandler --> MainRepository
+CrearMainHandler --> DomainEventPublisher
+
+AprobarMainHandler --> MainRepository
+AprobarMainHandler --> DomainEventPublisher
+
+RechazarMainHandler --> MainRepository
+RechazarMainHandler --> DomainEventPublisher
+
+ObtenerMainHandler --> MainRepository
+ListarMainHandler --> MainRepository
+
+MainDTO ..> MainAggregate
+
+MainEventListener --> NotificationService
+
+MainApplicationService --> MainRepository
+MainApplicationService --> DomainEventPublisher
+
+' ========================================================================
+' 9. STEREOTYPES (OBLIGATORIOS)
+' ========================================================================
+note top of CrearMainHandler : <<Command Handler>>
+note top of ObtenerMainHandler : <<Query Handler>>
+note top of MainDTO : <<DTO>>
+note top of DomainEventPublisher : <<Domain Service>>
+note top of MainEventListener : <<Event Listener>>
+note top of MainApplicationService : <<Application Service>>
+note top of NotificationService : <<Infrastructure Service>>
+
+@enduml

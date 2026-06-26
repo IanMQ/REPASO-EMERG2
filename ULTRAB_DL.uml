@@ -1,0 +1,160 @@
+@startuml
+' ========================================================================
+' DOMAIN LAYER - PLANTILLA ULTRA BÁSICA
+' ========================================================================
+' 
+' 📌 CÓMO USAR:
+'   1. Reemplaza "MainAggregate" por tu entidad principal
+'   2. Reemplaza "RelatedId" por tus IDs
+'   3. Reemplaza "MainConcept" por tus Value Objects
+'   4. Elimina los [OPCIONAL] que no necesites
+'
+' 📝 EJEMPLOS:
+'   MainAggregate → CartaGarantia | TourVirtual | Usuario | ExposicionVirtual
+'   MainConcept → Procedimiento | Multimedia | Credenciales
+' ========================================================================
+
+' ========================================================================
+' 1. ENUM (SOLO 1 - El estado del Aggregate)
+' ========================================================================
+enum MainEstado {
+    CREADO
+    ACTIVO
+    EN_PROCESO
+    APROBADO
+    RECHAZADO
+    CERRADO
+}
+
+' ========================================================================
+' 2. VALUE OBJECTS (SOLO IDs + 1 Concepto)
+' ========================================================================
+class MainId {
+    - value: UUID
+}
+
+class RelatedId {
+    - value: UUID
+}
+
+class MainConcept {
+    - atributo1: String
+    - atributo2: Integer
+    + esValido(): boolean
+}
+
+' ========================================================================
+' 3. AGGREGATE ROOT (ÚNICA ENTIDAD PRINCIPAL)
+' ========================================================================
+class MainAggregate {
+    - id: MainId
+    - relatedId: RelatedId
+    - concept: MainConcept
+    - estado: MainEstado
+    - fechaCreacion: Date
+    - observaciones: String
+    
+    + crear(relatedId: RelatedId, concept: MainConcept): void
+    + aprobar(obs: String): void
+    + rechazar(motivo: String): void
+    + getEstado(): MainEstado
+}
+
+' ========================================================================
+' 4. COMMANDS (MÍNIMO 2 - Crear + 1 Acción)
+' ========================================================================
+class CrearMainCommand {
+    - relatedId: RelatedId
+    - concept: MainConcept
+}
+
+class AprobarMainCommand {
+    - mainId: MainId
+    - observaciones: String
+}
+
+class RechazarMainCommand {
+    - mainId: MainId
+    - motivo: String
+}
+
+' ========================================================================
+' 5. QUERIES (MÍNIMO 2 - Obtener + Listar)
+' ========================================================================
+class ObtenerMainQuery {
+    - mainId: MainId
+}
+
+class ListarMainQuery {
+    - estado: MainEstado
+}
+
+' ========================================================================
+' 6. DOMAIN EVENTS (MÍNIMO 2 - Crear + 1 Acción)
+' ========================================================================
+class MainCreadoEvent {
+    - mainId: MainId
+    - relatedId: RelatedId
+    - fechaCreacion: Date
+}
+
+class MainAprobadoEvent {
+    - mainId: MainId
+    - fechaResolucion: Date
+}
+
+class MainRechazadoEvent {
+    - mainId: MainId
+    - fechaResolucion: Date
+    - motivo: String
+}
+
+' ========================================================================
+' 7. REPOSITORY (SOLO 1 INTERFAZ)
+' ========================================================================
+interface MainRepository {
+    + save(aggregate: MainAggregate): void
+    + findById(id: MainId): MainAggregate
+    + findByEstado(estado: MainEstado): List<MainAggregate>
+}
+
+' ========================================================================
+' 8. RELACIONES (MÍNIMO INDISPENSABLE)
+' ========================================================================
+MainAggregate --> MainId
+MainAggregate --> RelatedId
+MainAggregate --> MainConcept
+MainAggregate --> MainEstado
+
+CrearMainCommand --> RelatedId
+CrearMainCommand --> MainConcept
+
+AprobarMainCommand --> MainId
+RechazarMainCommand --> MainId
+
+ObtenerMainQuery --> MainId
+ListarMainQuery --> MainEstado
+
+MainCreadoEvent --> MainId
+MainCreadoEvent --> RelatedId
+
+MainAprobadoEvent --> MainId
+MainRechazadoEvent --> MainId
+
+MainRepository ..> MainAggregate
+MainRepository ..> MainId
+MainRepository ..> MainEstado
+
+' ========================================================================
+' 9. STEREOTYPES (OBLIGATORIOS)
+' ========================================================================
+note top of MainAggregate : <<Aggregate Root>>
+note left of MainId : <<Value Object>>
+note left of RelatedId : <<Value Object>>
+note left of MainConcept : <<Value Object>>
+note top of CrearMainCommand : <<Command>>
+note top of ObtenerMainQuery : <<Query>>
+note top of MainCreadoEvent : <<Domain Event>>
+note top of MainRepository : <<Repository>>
+
+@enduml

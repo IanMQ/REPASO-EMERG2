@@ -1,0 +1,355 @@
+@startuml
+' ========================================================================
+' DOMAIN LAYER - PLANTILLA COMPLETA
+' ========================================================================
+' 
+' 📌 CÓMO USAR ESTA PLANTILLA:
+'   1. Reemplaza "SampleAggregate" por el nombre de tu entidad principal
+'   2. Reemplaza "SampleEntity" por el nombre de tu entidad hija
+'   3. Reemplaza "SampleConcept" por el nombre de tu Value Object
+'   4. Elimina las piezas que no necesites
+'   5. Agrega o quita atributos y métodos según tu dominio
+'
+' 📝 EJEMPLOS DE ADAPTACIÓN RÁPIDA:
+'   SampleAggregate → CartaGarantia | Field | TourVirtual | Usuario | ExposicionVirtual
+'   SampleEntity → RevisionMedica | Seccion | PuntoInteractivo
+'   SampleConcept → Procedimiento | Multimedia | Credenciales
+' ========================================================================
+
+' ========================================================================
+' PIEZA 1: ENUMS - Estados y Tipos del dominio
+' ========================================================================
+enum SampleAggregateEstado {
+    BORRADOR
+    EN_PROCESO
+    EN_REVISION
+    APROBADO
+    RECHAZADO
+    ACTIVO
+    INACTIVO
+    PUBLICADO
+    ARCHIVADO
+    CERRADO
+    PENDIENTE
+    COMPLETADO
+    CANCELADO
+}
+
+enum SampleConceptoTipo {
+    TIPO_A
+    TIPO_B
+    TIPO_C
+}
+
+' ========================================================================
+' PIEZA 2: VALUE OBJECTS - Identificadores tipados
+' ========================================================================
+class SampleAggregateId {
+    - value: UUID
+}
+
+class SampleEntidad1Id {
+    - value: UUID
+}
+
+class SampleEntidad2Id {
+    - value: UUID
+}
+
+class SampleEntidad3Id {
+    - value: UUID
+}
+
+' ========================================================================
+' PIEZA 3: VALUE OBJECTS - Conceptos del dominio
+' ========================================================================
+class SampleConcept1 {
+    - atributo1: String
+    - atributo2: Integer
+    - atributo3: Date
+    - atributo4: Double
+    + esValido(): boolean
+    + calcular(param: Integer): Double
+}
+
+class SampleConcept2 {
+    - atributo1: String
+    - atributo2: SampleConceptoTipo
+    - atributo3: String
+    + combinar(otro: SampleConcept2): SampleConcept2
+}
+
+class SampleConcept3 {
+    - valor: Double
+    - moneda: String
+    + sumar(otro: SampleConcept3): SampleConcept3
+    + esMayorQue(otro: SampleConcept3): boolean
+}
+
+' ========================================================================
+' PIEZA 4: ENTITIES - Entidades hijas del Aggregate (OPCIONAL)
+' ========================================================================
+class SampleEntity1 {
+    - id: SampleEntidad1Id
+    - nombre: String
+    - descripcion: String
+    - fechaCreacion: Date
+    - orden: Integer
+    + crear(nombre: String, descripcion: String): SampleEntity1
+    + actualizar(nombre: String, descripcion: String): void
+    + getNombre(): String
+}
+
+class SampleEntity2 {
+    - id: SampleEntidad2Id
+    - atributo1: String
+    - atributo2: SampleConceptoTipo
+    - valor: Double
+    + crear(atributo1: String, tipo: SampleConceptoTipo): SampleEntity2
+    + getValor(): Double
+}
+
+' ========================================================================
+' PIEZA 5: AGGREGATE ROOT - Entidad principal del dominio
+' ========================================================================
+class SampleAggregate {
+    ' === IDENTIFICADORES ===
+    - id: SampleAggregateId
+    - entidad1Id: SampleEntidad1Id
+    - entidad2Id: SampleEntidad2Id
+    
+    ' === VALUE OBJECTS ===
+    - concept1: SampleConcept1
+    - concept2: SampleConcept2
+    - concept3: SampleConcept3
+    
+    ' === ESTADO ===
+    - estado: SampleAggregateEstado
+    - fechaCreacion: Date
+    - fechaResolucion: Date
+    - observaciones: String
+    - version: Long
+    
+    ' === ENTITIES HIJAS ===
+    - entities: List<SampleEntity1>
+    - entities2: List<SampleEntity2>
+    
+    ' -------- MÉTODOS DE CREACIÓN --------
+    + crear(entidad1Id: SampleEntidad1Id, entidad2Id: SampleEntidad2Id,
+            concept1: SampleConcept1, concept2: SampleConcept2): void
+    
+    ' -------- MÉTODOS DE VALIDACIÓN --------
+    + validar(parametro: String): void
+    + verificar(): boolean
+    
+    ' -------- MÉTODOS DE CAMBIO DE ESTADO --------
+    + activar(): void
+    + desactivar(): void
+    + publicar(): void
+    + archivar(): void
+    + aprobar(observaciones: String): void
+    + rechazar(motivo: String): void
+    + cerrar(): void
+    
+    ' -------- MÉTODOS DE MODIFICACIÓN --------
+    + actualizar(param: String): void
+    + agregarEntity(entity: SampleEntity1): void
+    + eliminarEntity(entityId: SampleEntidad1Id): void
+    + modificarEntity(entityId: SampleEntidad1Id, nombre: String): void
+    
+    ' -------- MÉTODOS DE CONSULTA --------
+    + getEstado(): SampleAggregateEstado
+    + estaActivo(): boolean
+    + estaPublicado(): boolean
+    + puedeModificarse(): boolean
+}
+
+' ========================================================================
+' PIEZA 6: COMMANDS - Intenciones de escritura (CQRS)
+' ========================================================================
+class CrearSampleAggregateCommand {
+    - entidad1Id: SampleEntidad1Id
+    - entidad2Id: SampleEntidad2Id
+    - concept1: SampleConcept1
+    - concept2: SampleConcept2
+}
+
+class ActivarSampleAggregateCommand {
+    - sampleAggregateId: SampleAggregateId
+}
+
+class DesactivarSampleAggregateCommand {
+    - sampleAggregateId: SampleAggregateId
+}
+
+class PublicarSampleAggregateCommand {
+    - sampleAggregateId: SampleAggregateId
+}
+
+class AprobarSampleAggregateCommand {
+    - sampleAggregateId: SampleAggregateId
+    - observaciones: String
+}
+
+class RechazarSampleAggregateCommand {
+    - sampleAggregateId: SampleAggregateId
+    - motivo: String
+}
+
+class AgregarEntityCommand {
+    - sampleAggregateId: SampleAggregateId
+    - nombre: String
+    - descripcion: String
+}
+
+' ========================================================================
+' PIEZA 7: QUERIES - Intenciones de lectura (CQRS)
+' ========================================================================
+class ObtenerSampleAggregateQuery {
+    - sampleAggregateId: SampleAggregateId
+}
+
+class ListarSampleAggregatesPorEntidad1Query {
+    - entidad1Id: SampleEntidad1Id
+}
+
+class ListarSampleAggregatesPorEstadoQuery {
+    - estado: SampleAggregateEstado
+}
+
+class ListarSampleAggregatesQuery {
+    - fechaInicio: Date
+    - fechaFin: Date
+    - estado: SampleAggregateEstado
+}
+
+' ========================================================================
+' PIEZA 8: DOMAIN EVENTS - Eventos del dominio
+' ========================================================================
+class SampleAggregateCreadoEvent {
+    - sampleAggregateId: SampleAggregateId
+    - entidad1Id: SampleEntidad1Id
+    - fechaCreacion: Date
+}
+
+class SampleAggregateActivadoEvent {
+    - sampleAggregateId: SampleAggregateId
+    - fechaActivacion: Date
+}
+
+class SampleAggregatePublicadoEvent {
+    - sampleAggregateId: SampleAggregateId
+    - fechaPublicacion: Date
+}
+
+class SampleAggregateAprobadoEvent {
+    - sampleAggregateId: SampleAggregateId
+    - fechaResolucion: Date
+    - observaciones: String
+}
+
+class SampleAggregateRechazadoEvent {
+    - sampleAggregateId: SampleAggregateId
+    - fechaResolucion: Date
+    - motivo: String
+}
+
+class EntityAgregadaEvent {
+    - sampleAggregateId: SampleAggregateId
+    - entityId: SampleEntidad1Id
+    - fechaAgregado: Date
+}
+
+' ========================================================================
+' PIEZA 9: REPOSITORY - Abstracción de persistencia
+' ========================================================================
+interface SampleAggregateRepository {
+    + save(aggregate: SampleAggregate): void
+    + findById(id: SampleAggregateId): SampleAggregate
+    + findByEntidad1(entidad1Id: SampleEntidad1Id): List<SampleAggregate>
+    + findByEstado(estado: SampleAggregateEstado): List<SampleAggregate>
+    + findByEntidad2(entidad2Id: SampleEntidad2Id): List<SampleAggregate>
+    + findAll(): List<SampleAggregate>
+    + delete(id: SampleAggregateId): void
+    + existsById(id: SampleAggregateId): boolean
+}
+
+' ========================================================================
+' PIEZA 10: RELACIONES - Montaje final del diagrama
+' ========================================================================
+
+' -------- AGGREGATE ROOT → VALUE OBJECTS --------
+SampleAggregate --> SampleAggregateId
+SampleAggregate --> SampleEntidad1Id
+SampleAggregate --> SampleEntidad2Id
+SampleAggregate --> SampleConcept1
+SampleAggregate --> SampleConcept2
+SampleAggregate --> SampleAggregateEstado
+
+' -------- AGGREGATE ROOT → ENTITIES --------
+SampleAggregate "1" *-- "0..*" SampleEntity1
+SampleAggregate "1" *-- "0..*" SampleEntity2
+
+' -------- ENTITY → VALUE OBJECTS --------
+SampleEntity1 --> SampleEntidad1Id
+SampleEntity2 --> SampleEntidad2Id
+SampleEntity2 --> SampleConceptoTipo
+
+' -------- COMMANDS → VALUE OBJECTS --------
+CrearSampleAggregateCommand --> SampleEntidad1Id
+CrearSampleAggregateCommand --> SampleEntidad2Id
+CrearSampleAggregateCommand --> SampleConcept1
+CrearSampleAggregateCommand --> SampleConcept2
+
+ActivarSampleAggregateCommand --> SampleAggregateId
+DesactivarSampleAggregateCommand --> SampleAggregateId
+PublicarSampleAggregateCommand --> SampleAggregateId
+AprobarSampleAggregateCommand --> SampleAggregateId
+RechazarSampleAggregateCommand --> SampleAggregateId
+AgregarEntityCommand --> SampleAggregateId
+AgregarEntityCommand --> SampleEntidad1Id
+
+' -------- QUERIES → VALUE OBJECTS Y ENUMS --------
+ObtenerSampleAggregateQuery --> SampleAggregateId
+ListarSampleAggregatesPorEntidad1Query --> SampleEntidad1Id
+ListarSampleAggregatesPorEstadoQuery --> SampleAggregateEstado
+ListarSampleAggregatesQuery --> SampleAggregateEstado
+
+' -------- DOMAIN EVENTS → VALUE OBJECTS --------
+SampleAggregateCreadoEvent --> SampleAggregateId
+SampleAggregateCreadoEvent --> SampleEntidad1Id
+
+SampleAggregateActivadoEvent --> SampleAggregateId
+SampleAggregatePublicadoEvent --> SampleAggregateId
+SampleAggregateAprobadoEvent --> SampleAggregateId
+SampleAggregateRechazadoEvent --> SampleAggregateId
+
+EntityAgregadaEvent --> SampleAggregateId
+EntityAgregadaEvent --> SampleEntidad1Id
+
+' -------- REPOSITORY → AGGREGATE --------
+SampleAggregateRepository ..> SampleAggregate
+SampleAggregateRepository ..> SampleAggregateId
+SampleAggregateRepository ..> SampleEntidad1Id
+SampleAggregateRepository ..> SampleAggregateEstado
+
+' ========================================================================
+' PIEZA 11: STEREOTYPES - Notas UML obligatorias
+' ========================================================================
+note top of SampleAggregate : <<Aggregate Root>>
+note left of SampleAggregateId : <<Value Object>>
+note left of SampleEntidad1Id : <<Value Object>>
+note left of SampleEntidad2Id : <<Value Object>>
+note left of SampleConcept1 : <<Value Object>>
+note left of SampleConcept2 : <<Value Object>>
+note left of SampleEntity1 : <<Entity>>
+note left of SampleEntity2 : <<Entity>>
+note top of CrearSampleAggregateCommand : <<Command>>
+note top of ActivarSampleAggregateCommand : <<Command>>
+note top of ObtenerSampleAggregateQuery : <<Query>>
+note top of ListarSampleAggregatesQuery : <<Query>>
+note top of SampleAggregateCreadoEvent : <<Domain Event>>
+note top of SampleAggregatePublicadoEvent : <<Domain Event>>
+note top of SampleAggregateRepository : <<Repository>>
+
+@enduml
