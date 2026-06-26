@@ -114,3 +114,136 @@
 |Puede tener Entities hijas|	Sí, ej. List<RevisionMedica>. Se agregan como atributos y se relacionan con *--.|
 
 ## COMMANDS (CQRS - Escritura)
+
+    class CrearSampleAggregateCommand {
+        - entidadRelacionadaId: EntidadRelacionadaId
+        - concepto1: ConceptoDominio1
+        - concepto2: ConceptoDominio2
+    }
+
+    class AprobarSampleAggregateCommand {
+        - sampleAggregateId: SampleAggregateId
+        - observaciones: String
+    }
+
+    class RechazarSampleAggregateCommand {
+        - sampleAggregateId: SampleAggregateId
+        - motivo: String
+    }
+
+    class AsignarSampleAggregateCommand {
+        - sampleAggregateId: SampleAggregateId
+        - recursoId: RecursoId
+    }
+
+    class CerrarSampleAggregateCommand {
+        - sampleAggregateId: SampleAggregateId
+        - comentarios: String
+    }
+
+|Aspecto	|Explicación|
+|-|-|
+|¿Qué es?|	Representa una intención de escritura o cambio de estado.|
+|Cuándo usarlo|	Para todas las operaciones que modifican el estado del Aggregate.|
+|Cuándo NO usarlo|	Para consultas de solo lectura (usa Queries).|
+|Cómo personalizarlo|	Cada operación del dominio debe tener un Command. Ejemplo: SolicitarCartaCommand, AprobarCartaCommand, RechazarCartaCommand.|
+|Cuándo agregar más Commands|	Cuando hay nuevas operaciones de negocio. Ejemplo: ModificarCartaCommand, CancelarCartaCommand.|
+|Cuándo NO agregar un Command|	Si la operación no modifica el estado (ej. consulta).|
+
+    Regla de oro: Un Command debe ser un verbo en infinitivo que describa la acción.
+
+## QUERIES (CQRS - Lectura)
+
+    class ObtenerSampleAggregateQuery {
+        - sampleAggregateId: SampleAggregateId
+    }
+
+    class ListarSampleAggregatesQuery {
+        - entidadRelacionadaId: EntidadRelacionadaId
+        - fechaInicio: Date
+        - fechaFin: Date
+    }
+
+    class ListarPorEstadoQuery {
+        - estado: SampleAggregateEstado
+    }
+
+    class ListarPorRecursoQuery {
+        - recursoId: RecursoId
+    }
+
+|Aspecto	|Explicación|
+|-|-|
+|¿Qué es?|	Representa una intención de lectura que NO modifica el estado.|
+|Cuándo usarlo|	Para todas las operaciones de consulta.|
+|Cuándo NO usarlo|	Si la consulta es demasiado compleja, crea un Query específico.|
+|Cómo personalizarlo|	Cada tipo de consulta debe tener un Query. Ejemplo: ObtenerCartaQuery, ListarCartasPorPacienteQuery.|
+|Cuándo agregar más Queries|	Cuando hay nuevas necesidades de consulta. Ejemplo: ListarCartasPorClinicaQuery, ListarCartasPorRangoFechasQuery.|
+|Cuándo NO agregar un Query	|Si la consulta se puede resolver con un Query existente.|
+
+    Regla de oro: Un Query debe ser un sustantivo que describa lo que se quiere obtener.
+
+## DOMAIN EVENTS
+
+    class SampleAggregateCreadoEvent {
+        - sampleAggregateId: SampleAggregateId
+        - entidadRelacionadaId: EntidadRelacionadaId
+        - fechaCreacion: Date
+    }
+
+    class SampleAggregateAprobadoEvent {
+        - sampleAggregateId: SampleAggregateId
+        - fechaResolucion: Date
+        - observaciones: String
+    }
+
+    class SampleAggregateRechazadoEvent {
+        - sampleAggregateId: SampleAggregateId
+        - fechaResolucion: Date
+        - motivo: String
+    }
+
+    class SampleAggregateAsignadoEvent {
+        - sampleAggregateId: SampleAggregateId
+        - recursoId: RecursoId
+        - fechaAsignacion: Date
+    }
+
+    class SampleAggregateCerradoEvent {
+        - sampleAggregateId: SampleAggregateId
+        - fechaCierre: Date
+        - comentarios: String
+    }
+
+|Aspecto|	Explicación|
+|-|-|
+|¿Qué es?|	Evento que ocurre en el dominio cuando algo importante sucede.|
+|Cuándo usarlo|	Cuando necesitas trazabilidad, auditoría o comunicación asíncrona.|
+|Cuándo NO usarlo|	En sistemas pequeños que no necesitan auditoría.|
+|Cómo personalizarlo|	Cada cambio de estado relevante debe tener un evento. Ejemplo: CartaSolicitadaEvent, CartaAprobadaEvent, CartaRechazadaEvent.|
+|Cuándo agregar más eventos|	Cuando hay nuevos cambios de estado relevantes. Ejemplo: CartaModificadaEvent, CartaCanceladaEvent.|
+|Cuándo NO agregar un evento|	Si el cambio no es relevante para auditoría o comunicación.|
+
+    Regla de oro: Los Domain Events se disparan desde el Aggregate cuando ocurre un cambio de estado importante.
+
+## REPOSITORY
+
+    interface SampleAggregateRepository {
+        + save(sampleAggregate: SampleAggregate): void
+        + findById(id: SampleAggregateId): SampleAggregate
+        + findByEntidadRelacionada(entidadRelacionadaId: EntidadRelacionadaId): List<SampleAggregate>
+        + findByEstado(estado: SampleAggregateEstado): List<SampleAggregate>
+        + findByRecurso(recursoId: RecursoId): List<SampleAggregate>
+        + delete(id: SampleAggregateId): void
+    }
+
+|Aspecto|	Explicación|
+|-|-|
+|¿Qué es?|	Interfaz que abstrae la persistencia del Aggregate Root.|
+|Cuándo usarlo|	Siempre que necesites persistir o recuperar el Aggregate.|
+|Cuándo NO usarlo|	Si el sistema no persiste datos (ej. aplicación de solo cálculo).|
+|Cómo personalizarlo|	Cambia el nombre y los métodos según tus necesidades de consulta. Ejemplo: CartaGarantiaRepository.|
+|Cuándo agregar más métodos|	Cuando necesitas consultas específicas. Ejemplo: findByClinica(), findByRangoFechas().|
+|Cuándo NO agregar un método|	Si la consulta no es necesaria para el dominio.|
+
+    Regla de oro: El Repository es una interfaz en el dominio, su implementación está en la capa de Infraestructura.
