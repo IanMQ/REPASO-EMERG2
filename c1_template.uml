@@ -1,0 +1,240 @@
+@startuml
+' ========================================================================
+' PLANTILLA GENÉRICA MÍNIMA - Domain Layer UML
+' Bounded Context: [NOMBRE_DEL_BOUNDED_CONTEXT]
+' Aggregate Principal: SampleAggregate
+' Producto: Spring Boot
+' ========================================================================
+
+' ========================================================================
+' 1. ENUM - Estado del Aggregate
+' ========================================================================
+enum SampleAggregateEstado {
+    CREADO
+    EN_PROCESO
+    EN_REVISION
+    APROBADO
+    RECHAZADO
+    CERRADO
+}
+
+' ========================================================================
+' 2. VALUE OBJECTS - Identificadores
+' ========================================================================
+class SampleAggregateId {
+    - value: UUID
+}
+
+class EntidadRelacionadaId {
+    - value: UUID
+}
+
+class RecursoId {
+    - value: UUID
+}
+
+' ========================================================================
+' 3. VALUE OBJECTS - Conceptos del dominio
+' ========================================================================
+class ConceptoDominio1 {
+    - atributo1: String
+    - atributo2: Integer
+    - atributo3: Date
+}
+
+class ConceptoDominio2 {
+    - atributo1: Double
+    - atributo2: String
+    + sumar(otro: ConceptoDominio2): ConceptoDominio2
+    + esValido(): boolean
+}
+
+' ========================================================================
+' 4. AGGREGATE ROOT (Entidad principal)
+' ========================================================================
+class SampleAggregate {
+    ' === IDENTIFICADORES ===
+    - id: SampleAggregateId
+    - entidadRelacionadaId: EntidadRelacionadaId
+    - recursoId: RecursoId
+    
+    ' === VALUE OBJECTS ===
+    - concepto1: ConceptoDominio1
+    - concepto2: ConceptoDominio2
+    
+    ' === ESTADO ===
+    - estado: SampleAggregateEstado
+    - fechaCreacion: Date
+    - fechaResolucion: Date
+    - observaciones: String
+    
+    ' === MÉTODOS DE NEGOCIO ===
+    + crear(entidadId: EntidadRelacionadaId, 
+            concepto1: ConceptoDominio1, 
+            concepto2: ConceptoDominio2): void
+    + validar(valido: boolean): void
+    + asignar(recursoId: RecursoId): void
+    + aprobar(obs: String): void
+    + rechazar(motivo: String): void
+    + cerrar(): void
+    + getEstado(): SampleAggregateEstado
+    + esAprobado(): boolean
+    + esRechazado(): boolean
+}
+
+' ========================================================================
+' 5. COMMANDS (CQRS - Escritura)
+' ========================================================================
+class CrearSampleAggregateCommand {
+    - entidadRelacionadaId: EntidadRelacionadaId
+    - concepto1: ConceptoDominio1
+    - concepto2: ConceptoDominio2
+}
+
+class AprobarSampleAggregateCommand {
+    - sampleAggregateId: SampleAggregateId
+    - observaciones: String
+}
+
+class RechazarSampleAggregateCommand {
+    - sampleAggregateId: SampleAggregateId
+    - motivo: String
+}
+
+class AsignarSampleAggregateCommand {
+    - sampleAggregateId: SampleAggregateId
+    - recursoId: RecursoId
+}
+
+class CerrarSampleAggregateCommand {
+    - sampleAggregateId: SampleAggregateId
+    - comentarios: String
+}
+
+' ========================================================================
+' 6. QUERIES (CQRS - Lectura)
+' ========================================================================
+class ObtenerSampleAggregateQuery {
+    - sampleAggregateId: SampleAggregateId
+}
+
+class ListarSampleAggregatesQuery {
+    - entidadRelacionadaId: EntidadRelacionadaId
+    - fechaInicio: Date
+    - fechaFin: Date
+}
+
+class ListarPorEstadoQuery {
+    - estado: SampleAggregateEstado
+}
+
+class ListarPorRecursoQuery {
+    - recursoId: RecursoId
+}
+
+' ========================================================================
+' 7. DOMAIN EVENTS
+' ========================================================================
+class SampleAggregateCreadoEvent {
+    - sampleAggregateId: SampleAggregateId
+    - entidadRelacionadaId: EntidadRelacionadaId
+    - fechaCreacion: Date
+}
+
+class SampleAggregateAprobadoEvent {
+    - sampleAggregateId: SampleAggregateId
+    - fechaResolucion: Date
+    - observaciones: String
+}
+
+class SampleAggregateRechazadoEvent {
+    - sampleAggregateId: SampleAggregateId
+    - fechaResolucion: Date
+    - motivo: String
+}
+
+class SampleAggregateAsignadoEvent {
+    - sampleAggregateId: SampleAggregateId
+    - recursoId: RecursoId
+    - fechaAsignacion: Date
+}
+
+class SampleAggregateCerradoEvent {
+    - sampleAggregateId: SampleAggregateId
+    - fechaCierre: Date
+    - comentarios: String
+}
+
+' ========================================================================
+' 8. REPOSITORY
+' ========================================================================
+interface SampleAggregateRepository {
+    + save(sampleAggregate: SampleAggregate): void
+    + findById(id: SampleAggregateId): SampleAggregate
+    + findByEntidadRelacionada(entidadRelacionadaId: EntidadRelacionadaId): List<SampleAggregate>
+    + findByEstado(estado: SampleAggregateEstado): List<SampleAggregate>
+    + findByRecurso(recursoId: RecursoId): List<SampleAggregate>
+    + delete(id: SampleAggregateId): void
+}
+
+' ========================================================================
+' 9. STEREOTYPES (Opcional pero recomendado)
+' ========================================================================
+note top of SampleAggregate : <<Aggregate Root>>
+note left of SampleAggregateId : <<Value Object>>
+note left of EntidadRelacionadaId : <<Value Object>>
+note left of RecursoId : <<Value Object>>
+note left of ConceptoDominio1 : <<Value Object>>
+note left of ConceptoDominio2 : <<Value Object>>
+note top of CrearSampleAggregateCommand : <<Command>>
+note top of ObtenerSampleAggregateQuery : <<Query>>
+note top of SampleAggregateCreadoEvent : <<Domain Event>>
+note top of SampleAggregateRepository : <<Repository>>
+
+' ========================================================================
+' 10. RELATIONSHIPS
+' ========================================================================
+
+' Aggregate Root usa Value Objects
+SampleAggregate --> SampleAggregateId
+SampleAggregate --> EntidadRelacionadaId
+SampleAggregate --> RecursoId
+SampleAggregate --> ConceptoDominio1
+SampleAggregate --> ConceptoDominio2
+SampleAggregate --> SampleAggregateEstado
+
+' Commands usan Value Objects
+CrearSampleAggregateCommand --> EntidadRelacionadaId
+CrearSampleAggregateCommand --> ConceptoDominio1
+CrearSampleAggregateCommand --> ConceptoDominio2
+
+AprobarSampleAggregateCommand --> SampleAggregateId
+RechazarSampleAggregateCommand --> SampleAggregateId
+AsignarSampleAggregateCommand --> SampleAggregateId
+AsignarSampleAggregateCommand --> RecursoId
+CerrarSampleAggregateCommand --> SampleAggregateId
+
+' Queries usan Value Objects y Enums
+ObtenerSampleAggregateQuery --> SampleAggregateId
+ListarSampleAggregatesQuery --> EntidadRelacionadaId
+ListarPorEstadoQuery --> SampleAggregateEstado
+ListarPorRecursoQuery --> RecursoId
+
+' Domain Events usan Value Objects
+SampleAggregateCreadoEvent --> SampleAggregateId
+SampleAggregateCreadoEvent --> EntidadRelacionadaId
+
+SampleAggregateAprobadoEvent --> SampleAggregateId
+SampleAggregateRechazadoEvent --> SampleAggregateId
+SampleAggregateAsignadoEvent --> SampleAggregateId
+SampleAggregateAsignadoEvent --> RecursoId
+SampleAggregateCerradoEvent --> SampleAggregateId
+
+' Repository con Aggregate Root
+SampleAggregateRepository ..> SampleAggregate
+SampleAggregateRepository ..> SampleAggregateId
+SampleAggregateRepository ..> EntidadRelacionadaId
+SampleAggregateRepository ..> SampleAggregateEstado
+SampleAggregateRepository ..> RecursoId
+
+@enduml
