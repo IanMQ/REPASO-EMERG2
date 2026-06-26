@@ -1,0 +1,245 @@
+@startuml
+' ========================================================================
+' APPLICATION LAYER UML - TechNova Authentication Platform
+' Bounded Context: GestionUsuarios
+' Aggregate Principal: Usuario
+' Producto: Spring Boot + CQRS
+' ========================================================================
+
+' ========================================================================
+' 1. COMMAND HANDLERS
+' ========================================================================
+class CrearUsuarioHandler {
+    - repository: UsuarioRepository
+    - eventPublisher: DomainEventPublisher
+    - passwordEncoder: PasswordEncoder
+    + handle(command: CrearUsuarioCommand): UsuarioId
+}
+
+class ActivarUsuarioHandler {
+    - repository: UsuarioRepository
+    - eventPublisher: DomainEventPublisher
+    + handle(command: ActivarUsuarioCommand): void
+}
+
+class DesactivarUsuarioHandler {
+    - repository: UsuarioRepository
+    - eventPublisher: DomainEventPublisher
+    + handle(command: DesactivarUsuarioCommand): void
+}
+
+class BloquearUsuarioHandler {
+    - repository: UsuarioRepository
+    - eventPublisher: DomainEventPublisher
+    + handle(command: BloquearUsuarioCommand): void
+}
+
+class DesbloquearUsuarioHandler {
+    - repository: UsuarioRepository
+    - eventPublisher: DomainEventPublisher
+    + handle(command: DesbloquearUsuarioCommand): void
+}
+
+class CambiarPasswordHandler {
+    - repository: UsuarioRepository
+    - eventPublisher: DomainEventPublisher
+    - passwordEncoder: PasswordEncoder
+    + handle(command: CambiarPasswordCommand): void
+}
+
+class AsignarRolHandler {
+    - repository: UsuarioRepository
+    - eventPublisher: DomainEventPublisher
+    + handle(command: AsignarRolCommand): void
+}
+
+class AsignarPoolHandler {
+    - repository: UsuarioRepository
+    - eventPublisher: DomainEventPublisher
+    + handle(command: AsignarPoolCommand): void
+}
+
+' ========================================================================
+' 2. QUERY HANDLERS
+' ========================================================================
+class ObtenerUsuarioHandler {
+    - repository: UsuarioRepository
+    + handle(query: ObtenerUsuarioQuery): UsuarioDTO
+}
+
+class ListarUsuariosPorTipoHandler {
+    - repository: UsuarioRepository
+    + handle(query: ListarUsuariosPorTipoQuery): List<UsuarioDTO>
+}
+
+class ListarUsuariosPorEstadoHandler {
+    - repository: UsuarioRepository
+    + handle(query: ListarUsuariosPorEstadoQuery): List<UsuarioDTO>
+}
+
+class ListarUsuariosPorRolHandler {
+    - repository: UsuarioRepository
+    + handle(query: ListarUsuariosPorRolQuery): List<UsuarioDTO>
+}
+
+class ListarUsuariosPorPoolHandler {
+    - repository: UsuarioRepository
+    + handle(query: ListarUsuariosPorPoolQuery): List<UsuarioDTO>
+}
+
+' ========================================================================
+' 3. DTOS
+' ========================================================================
+class UsuarioDTO {
+    - id: String
+    - email: String
+    - nombre: String
+    - apellido: String
+    - tipo: String
+    - estado: String
+    - roles: List<String>
+    - pools: List<String>
+    - fechaCreacion: Date
+    - fechaUltimoAcceso: Date
+    + fromDomain(usuario: Usuario): UsuarioDTO
+}
+
+class CredencialesDTO {
+    - email: String
+    - ultimoCambioPassword: Date
+    - necesitaCambioPassword: boolean
+    + fromDomain(credenciales: Credenciales): CredencialesDTO
+}
+
+class PoolUsuariosDTO {
+    - id: String
+    - nombre: String
+    - tipo: String
+    - valor: String
+    + fromDomain(pool: PoolUsuarios): PoolUsuariosDTO
+}
+
+' ========================================================================
+' 4. DOMAIN EVENT PUBLISHER
+' ========================================================================
+interface DomainEventPublisher {
+    + publish(event: Object): void
+}
+
+' ========================================================================
+' 5. EVENT LISTENERS
+' ========================================================================
+class UsuarioEventListener {
+    - auditService: AuditService
+    - notificationService: NotificationService
+    - externalIdentityService: ExternalIdentityService
+    + on(event: UsuarioCreadoEvent): void
+    + on(event: UsuarioActivadoEvent): void
+    + on(event: UsuarioBloqueadoEvent): void
+    + on(event: PasswordCambiadoEvent): void
+}
+
+' ========================================================================
+' 6. APPLICATION SERVICES (Opcional)
+' ========================================================================
+class UsuarioApplicationService {
+    - repository: UsuarioRepository
+    - eventPublisher: DomainEventPublisher
+    - passwordEncoder: PasswordEncoder
+    - externalIdentityService: ExternalIdentityService
+    + crearUsuario(command: CrearUsuarioCommand): UsuarioId
+    + activarUsuario(command: ActivarUsuarioCommand): void
+    + bloquearUsuario(command: BloquearUsuarioCommand): void
+    + obtenerUsuario(query: ObtenerUsuarioQuery): UsuarioDTO
+    + autenticarUsuario(email: String, password: String): TokenResponse
+}
+
+' ========================================================================
+' 7. INFRASTRUCTURE INTERFACES
+' ========================================================================
+interface PasswordEncoder {
+    + encode(password: String): String
+    + matches(password: String, hash: String): boolean
+}
+
+interface AuditService {
+    + logAccion(usuarioId: UsuarioId, accion: String): void
+}
+
+interface NotificationService {
+    + sendEmail(to: String, subject: String, body: String): void
+}
+
+interface ExternalIdentityService {
+    + createUser(email: String, password: String, pool: String): String
+    + updateUser(externalId: String, data: Map<String, Object>): void
+    + deleteUser(externalId: String): void
+}
+
+' ========================================================================
+' 8. RELATIONSHIPS
+' ========================================================================
+
+' Command Handlers
+CrearUsuarioHandler --> UsuarioRepository
+CrearUsuarioHandler --> DomainEventPublisher
+CrearUsuarioHandler --> PasswordEncoder
+
+ActivarUsuarioHandler --> UsuarioRepository
+ActivarUsuarioHandler --> DomainEventPublisher
+
+DesactivarUsuarioHandler --> UsuarioRepository
+DesactivarUsuarioHandler --> DomainEventPublisher
+
+BloquearUsuarioHandler --> UsuarioRepository
+BloquearUsuarioHandler --> DomainEventPublisher
+
+DesbloquearUsuarioHandler --> UsuarioRepository
+DesbloquearUsuarioHandler --> DomainEventPublisher
+
+CambiarPasswordHandler --> UsuarioRepository
+CambiarPasswordHandler --> DomainEventPublisher
+CambiarPasswordHandler --> PasswordEncoder
+
+AsignarRolHandler --> UsuarioRepository
+AsignarRolHandler --> DomainEventPublisher
+
+AsignarPoolHandler --> UsuarioRepository
+AsignarPoolHandler --> DomainEventPublisher
+
+' Query Handlers
+ObtenerUsuarioHandler --> UsuarioRepository
+ListarUsuariosPorTipoHandler --> UsuarioRepository
+ListarUsuariosPorEstadoHandler --> UsuarioRepository
+ListarUsuariosPorRolHandler --> UsuarioRepository
+ListarUsuariosPorPoolHandler --> UsuarioRepository
+
+' DTOs
+UsuarioDTO ..> Usuario
+CredencialesDTO ..> Credenciales
+PoolUsuariosDTO ..> PoolUsuarios
+
+' Event Listener
+UsuarioEventListener --> AuditService
+UsuarioEventListener --> NotificationService
+UsuarioEventListener --> ExternalIdentityService
+
+' Application Service
+UsuarioApplicationService --> UsuarioRepository
+UsuarioApplicationService --> DomainEventPublisher
+UsuarioApplicationService --> PasswordEncoder
+UsuarioApplicationService --> ExternalIdentityService
+
+' ========================================================================
+' 9. STEREOTYPES
+' ========================================================================
+note top of CrearUsuarioHandler : <<Command Handler>>
+note top of ObtenerUsuarioHandler : <<Query Handler>>
+note top of UsuarioDTO : <<DTO>>
+note top of DomainEventPublisher : <<Domain Service>>
+note top of UsuarioEventListener : <<Event Listener>>
+note top of UsuarioApplicationService : <<Application Service>>
+note top of PasswordEncoder : <<Infrastructure Service>>
+note top of ExternalIdentityService : <<Infrastructure Service>>
+
+@enduml

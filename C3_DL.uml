@@ -1,0 +1,331 @@
+@startuml
+' ========================================================================
+' DOMAIN LAYER UML - TechNova Authentication Platform
+' Bounded Context: GestionUsuarios
+' Aggregate Principal: Usuario
+' Producto: Spring Boot + CQRS
+' ========================================================================
+
+' ========================================================================
+' 1. ENUMS
+' ========================================================================
+enum TipoUsuario {
+    INTERNO
+    EXTERNO
+}
+
+enum EstadoUsuario {
+    ACTIVO
+    INACTIVO
+    BLOQUEADO
+    PENDIENTE_VERIFICACION
+}
+
+enum RolUsuario {
+    EMPLEADO
+    ADMINISTRADOR
+    CLIENTE_FREEMIUM
+    CLIENTE_PREMIUM
+    SOCIO
+    GERENTE
+}
+
+enum TipoPool {
+    REGION
+    TIPO_CLIENTE
+    IDIOMA
+    SECTOR
+}
+
+' ========================================================================
+' 2. VALUE OBJECTS - Identificadores
+' ========================================================================
+class UsuarioId {
+    - value: UUID
+}
+
+class PoolId {
+    - value: UUID
+}
+
+class EmpresaId {
+    - value: UUID
+}
+
+' ========================================================================
+' 3. VALUE OBJECTS - Conceptos del dominio
+' ========================================================================
+class Credenciales {
+    - email: String
+    - passwordHash: String
+    - ultimoCambioPassword: Date
+    + esPasswordValida(password: String): boolean
+    + necesitaCambioPassword(diasMaximo: Integer): boolean
+}
+
+class DatosPersonales {
+    - nombre: String
+    - apellido: String
+    - documentoIdentidad: String
+    - telefono: String
+    - direccion: String
+}
+
+class PoliticasUsuario {
+    - requiereMFA: boolean
+    - sessionTimeout: Integer
+    - maxIntentosFallidos: Integer
+    - passwordExpiration: Integer
+    + esPoliticaValida(): boolean
+}
+
+class PoolUsuarios {
+    - id: PoolId
+    - nombre: String
+    - tipo: TipoPool
+    - valor: String
+    - descripcion: String
+}
+
+' ========================================================================
+' 4. AGGREGATE ROOT
+' ========================================================================
+class Usuario {
+    ' === IDENTIFICADORES ===
+    - id: UsuarioId
+    - empresaId: EmpresaId
+    
+    ' === VALUE OBJECTS ===
+    - credenciales: Credenciales
+    - datosPersonales: DatosPersonales
+    - politicas: PoliticasUsuario
+    
+    ' === ATRIBUTOS ===
+    - tipo: TipoUsuario
+    - estado: EstadoUsuario
+    - roles: List<RolUsuario>
+    - pools: List<PoolUsuarios>
+    - fechaCreacion: Date
+    - fechaUltimoAcceso: Date
+    - intentosFallidos: Integer
+    
+    ' === MÉTODOS DE NEGOCIO ===
+    + crear(credenciales: Credenciales, datos: DatosPersonales, 
+            tipo: TipoUsuario, roles: List<RolUsuario>): void
+    + activar(): void
+    + desactivar(): void
+    + bloquear(): void
+    + desbloquear(): void
+    + cambiarPassword(nuevaPassword: String): void
+    + verificar(): void
+    + agregarRol(rol: RolUsuario): void
+    + removerRol(rol: RolUsuario): void
+    + asignarPool(pool: PoolUsuarios): void
+    + removerPool(poolId: PoolId): void
+    + getEstado(): EstadoUsuario
+    + estaActivo(): boolean
+    + puedeAcceder(): boolean
+}
+
+' ========================================================================
+' 5. COMMANDS (CQRS - Escritura)
+' ========================================================================
+class CrearUsuarioCommand {
+    - email: String
+    - password: String
+    - nombre: String
+    - apellido: String
+    - documentoIdentidad: String
+    - tipo: TipoUsuario
+    - roles: List<RolUsuario>
+}
+
+class ActivarUsuarioCommand {
+    - usuarioId: UsuarioId
+}
+
+class DesactivarUsuarioCommand {
+    - usuarioId: UsuarioId
+}
+
+class BloquearUsuarioCommand {
+    - usuarioId: UsuarioId
+    - motivo: String
+}
+
+class DesbloquearUsuarioCommand {
+    - usuarioId: UsuarioId
+}
+
+class CambiarPasswordCommand {
+    - usuarioId: UsuarioId
+    - nuevaPassword: String
+}
+
+class AsignarRolCommand {
+    - usuarioId: UsuarioId
+    - rol: RolUsuario
+}
+
+class AsignarPoolCommand {
+    - usuarioId: UsuarioId
+    - pool: PoolUsuarios
+}
+
+' ========================================================================
+' 6. QUERIES (CQRS - Lectura)
+' ========================================================================
+class ObtenerUsuarioQuery {
+    - usuarioId: UsuarioId
+}
+
+class ListarUsuariosPorTipoQuery {
+    - tipo: TipoUsuario
+}
+
+class ListarUsuariosPorEstadoQuery {
+    - estado: EstadoUsuario
+}
+
+class ListarUsuariosPorRolQuery {
+    - rol: RolUsuario
+}
+
+class ListarUsuariosPorPoolQuery {
+    - poolId: PoolId
+}
+
+' ========================================================================
+' 7. DOMAIN EVENTS
+' ========================================================================
+class UsuarioCreadoEvent {
+    - usuarioId: UsuarioId
+    - email: String
+    - tipo: TipoUsuario
+    - fechaCreacion: Date
+}
+
+class UsuarioActivadoEvent {
+    - usuarioId: UsuarioId
+    - fechaActivacion: Date
+}
+
+class UsuarioDesactivadoEvent {
+    - usuarioId: UsuarioId
+    - fechaDesactivacion: Date
+}
+
+class UsuarioBloqueadoEvent {
+    - usuarioId: UsuarioId
+    - motivo: String
+    - fechaBloqueo: Date
+}
+
+class PasswordCambiadoEvent {
+    - usuarioId: UsuarioId
+    - fechaCambio: Date
+}
+
+class RolAsignadoEvent {
+    - usuarioId: UsuarioId
+    - rol: RolUsuario
+    - fechaAsignacion: Date
+}
+
+class PoolAsignadoEvent {
+    - usuarioId: UsuarioId
+    - poolId: PoolId
+    - fechaAsignacion: Date
+}
+
+' ========================================================================
+' 8. REPOSITORY
+' ========================================================================
+interface UsuarioRepository {
+    + save(usuario: Usuario): void
+    + findById(id: UsuarioId): Usuario
+    + findByEmail(email: String): Usuario
+    + findByTipo(tipo: TipoUsuario): List<Usuario>
+    + findByEstado(estado: EstadoUsuario): List<Usuario>
+    + findByRol(rol: RolUsuario): List<Usuario>
+    + findByPool(poolId: PoolId): List<Usuario>
+    + delete(id: UsuarioId): void
+}
+
+' ========================================================================
+' 9. RELATIONSHIPS
+' ========================================================================
+
+' Aggregate Root usa Value Objects
+Usuario --> UsuarioId
+Usuario --> EmpresaId
+Usuario --> Credenciales
+Usuario --> DatosPersonales
+Usuario --> PoliticasUsuario
+Usuario --> TipoUsuario
+Usuario --> EstadoUsuario
+Usuario "1" *-- "0..*" PoolUsuarios : tiene >
+
+' Credenciales usa métodos propios
+Credenciales ..> Usuario
+
+' Commands usan Value Objects y Enums
+CrearUsuarioCommand --> TipoUsuario
+CrearUsuarioCommand --> RolUsuario
+
+ActivarUsuarioCommand --> UsuarioId
+DesactivarUsuarioCommand --> UsuarioId
+BloquearUsuarioCommand --> UsuarioId
+DesbloquearUsuarioCommand --> UsuarioId
+CambiarPasswordCommand --> UsuarioId
+
+AsignarRolCommand --> UsuarioId
+AsignarRolCommand --> RolUsuario
+
+AsignarPoolCommand --> UsuarioId
+AsignarPoolCommand --> PoolUsuarios
+
+' Queries usan Value Objects y Enums
+ObtenerUsuarioQuery --> UsuarioId
+ListarUsuariosPorTipoQuery --> TipoUsuario
+ListarUsuariosPorEstadoQuery --> EstadoUsuario
+ListarUsuariosPorRolQuery --> RolUsuario
+ListarUsuariosPorPoolQuery --> PoolId
+
+' Domain Events usan Value Objects
+UsuarioCreadoEvent --> UsuarioId
+UsuarioCreadoEvent --> TipoUsuario
+
+UsuarioActivadoEvent --> UsuarioId
+UsuarioDesactivadoEvent --> UsuarioId
+UsuarioBloqueadoEvent --> UsuarioId
+PasswordCambiadoEvent --> UsuarioId
+RolAsignadoEvent --> UsuarioId
+RolAsignadoEvent --> RolUsuario
+
+PoolAsignadoEvent --> UsuarioId
+PoolAsignadoEvent --> PoolId
+
+' Repository con Aggregate Root
+UsuarioRepository ..> Usuario
+UsuarioRepository ..> UsuarioId
+UsuarioRepository ..> TipoUsuario
+UsuarioRepository ..> EstadoUsuario
+UsuarioRepository ..> RolUsuario
+
+' ========================================================================
+' 10. STEREOTYPES
+' ========================================================================
+note top of Usuario : <<Aggregate Root>>
+note left of UsuarioId : <<Value Object>>
+note left of PoolId : <<Value Object>>
+note left of Credenciales : <<Value Object>>
+note left of DatosPersonales : <<Value Object>>
+note left of PoliticasUsuario : <<Value Object>>
+note left of PoolUsuarios : <<Value Object>>
+note top of CrearUsuarioCommand : <<Command>>
+note top of ObtenerUsuarioQuery : <<Query>>
+note top of UsuarioCreadoEvent : <<Domain Event>>
+note top of UsuarioRepository : <<Repository>>
+
+@enduml

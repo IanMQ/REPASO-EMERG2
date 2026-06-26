@@ -1,0 +1,181 @@
+@startuml
+' ========================================================================
+' APPLICATION LAYER UML - Google Arts & Culture
+' Bounded Context: GestionExposicionesVirtuales
+' Aggregate Principal: ExposicionVirtual
+' Producto: Spring Boot + Modular Monolith + CQRS
+' ========================================================================
+
+' ========================================================================
+' 1. COMMAND HANDLERS
+' ========================================================================
+class CrearExposicionHandler {
+    - repository: ExposicionVirtualRepository
+    - eventPublisher: DomainEventPublisher
+    + handle(command: CrearExposicionCommand): ExposicionId
+}
+
+class AgregarSeccionHandler {
+    - repository: ExposicionVirtualRepository
+    - eventPublisher: DomainEventPublisher
+    + handle(command: AgregarSeccionCommand): void
+}
+
+class PublicarExposicionHandler {
+    - repository: ExposicionVirtualRepository
+    - eventPublisher: DomainEventPublisher
+    + handle(command: PublicarExposicionCommand): void
+}
+
+class ArchivarExposicionHandler {
+    - repository: ExposicionVirtualRepository
+    - eventPublisher: DomainEventPublisher
+    + handle(command: ArchivarExposicionCommand): void
+}
+
+' ========================================================================
+' 2. QUERY HANDLERS
+' ========================================================================
+class ObtenerExposicionHandler {
+    - repository: ExposicionVirtualRepository
+    + handle(query: ObtenerExposicionQuery): ExposicionVirtualDTO
+}
+
+class ListarExposicionesPorCuradorHandler {
+    - repository: ExposicionVirtualRepository
+    + handle(query: ListarExposicionesPorCuradorQuery): List<ExposicionVirtualDTO>
+}
+
+class ListarExposicionesPorEstadoHandler {
+    - repository: ExposicionVirtualRepository
+    + handle(query: ListarExposicionesPorEstadoQuery): List<ExposicionVirtualDTO>
+}
+
+' ========================================================================
+' 3. DTOS
+' ========================================================================
+class ExposicionVirtualDTO {
+    - id: String
+    - curadorId: String
+    - institucionId: String
+    - titulo: String
+    - descripcion: String
+    - estado: String
+    - fechaCreacion: Date
+    - fechaPublicacion: Date
+    - secciones: List<SeccionDTO>
+    + fromDomain(exposicion: ExposicionVirtual): ExposicionVirtualDTO
+}
+
+class SeccionDTO {
+    - id: String
+    - titulo: String
+    - descripcion: String
+    - multimedia: List<MultimediaDTO>
+    - orden: Integer
+    + fromDomain(seccion: Seccion): SeccionDTO
+}
+
+class MultimediaDTO {
+    - tipo: String
+    - url: String
+    - titulo: String
+    - descripcion: String
+    - geolocalizacion: String
+    - orden: Integer
+    + fromDomain(multimedia: Multimedia): MultimediaDTO
+}
+
+' ========================================================================
+' 4. DOMAIN EVENT PUBLISHER
+' ========================================================================
+interface DomainEventPublisher {
+    + publish(event: Object): void
+}
+
+' ========================================================================
+' 5. EVENT LISTENER (Para coordinación entre módulos)
+' ========================================================================
+class ExposicionEventListener {
+    - recommendationService: RecommendationService
+    - notificationService: NotificationService
+    + on(event: ExposicionPublicadaEvent): void
+    + on(event: ExposicionCreadaEvent): void
+}
+
+' ========================================================================
+' 6. APPLICATION SERVICES (Opcional - Orquestación compleja)
+' ========================================================================
+class ExposicionApplicationService {
+    - repository: ExposicionVirtualRepository
+    - eventPublisher: DomainEventPublisher
+    - validationService: ValidationService
+    + crearExposicion(command: CrearExposicionCommand): ExposicionId
+    + publicarExposicion(command: PublicarExposicionCommand): void
+    + obtenerExposicion(query: ObtenerExposicionQuery): ExposicionVirtualDTO
+}
+
+' ========================================================================
+' 7. INTERFACES DE INFRAESTRUCTURA
+' ========================================================================
+interface RecommendationService {
+    + notifyExposicionPublicada(exposicionId: ExposicionId): void
+}
+
+interface NotificationService {
+    + notifyCurador(curadorId: CuradorId, message: String): void
+}
+
+interface ValidationService {
+    + validarExposicion(exposicion: ExposicionVirtual): boolean
+    + validarSeccion(seccion: Seccion): boolean
+}
+
+' ========================================================================
+' 8. RELATIONSHIPS
+' ========================================================================
+
+' Command Handlers
+CrearExposicionHandler --> ExposicionVirtualRepository
+CrearExposicionHandler --> DomainEventPublisher
+
+AgregarSeccionHandler --> ExposicionVirtualRepository
+AgregarSeccionHandler --> DomainEventPublisher
+
+PublicarExposicionHandler --> ExposicionVirtualRepository
+PublicarExposicionHandler --> DomainEventPublisher
+
+ArchivarExposicionHandler --> ExposicionVirtualRepository
+ArchivarExposicionHandler --> DomainEventPublisher
+
+' Query Handlers
+ObtenerExposicionHandler --> ExposicionVirtualRepository
+ListarExposicionesPorCuradorHandler --> ExposicionVirtualRepository
+ListarExposicionesPorEstadoHandler --> ExposicionVirtualRepository
+
+' DTOs transforman desde Domain
+ExposicionVirtualDTO ..> ExposicionVirtual
+SeccionDTO ..> Seccion
+MultimediaDTO ..> Multimedia
+
+' Event Listener usa servicios
+ExposicionEventListener --> RecommendationService
+ExposicionEventListener --> NotificationService
+
+' Application Service usa Repository y EventPublisher
+ExposicionApplicationService --> ExposicionVirtualRepository
+ExposicionApplicationService --> DomainEventPublisher
+ExposicionApplicationService --> ValidationService
+
+' ========================================================================
+' 9. STEREOTYPES
+' ========================================================================
+note top of CrearExposicionHandler : <<Command Handler>>
+note top of ObtenerExposicionHandler : <<Query Handler>>
+note top of ExposicionVirtualDTO : <<DTO>>
+note top of DomainEventPublisher : <<Domain Service>>
+note top of ExposicionEventListener : <<Event Listener>>
+note top of ExposicionApplicationService : <<Application Service>>
+note top of RecommendationService : <<Infrastructure Service>>
+
+@enduml

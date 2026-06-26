@@ -1,0 +1,233 @@
+@startuml
+' ========================================================================
+' DOMAIN LAYER UML - Google Arts & Culture
+' Bounded Context: GestionExposicionesVirtuales
+' Aggregate Principal: ExposicionVirtual
+' Producto: Spring Boot + Modular Monolith + CQRS
+' ========================================================================
+
+' ========================================================================
+' 1. ENUMS
+' ========================================================================
+enum EstadoExposicion {
+    BORRADOR
+    EN_REVISION
+    PUBLICADA
+    ARCHIVADA
+}
+
+enum TipoMultimedia {
+    IMAGEN
+    AUDIO
+    VIDEO
+    MODELO_3D
+    TEXTO
+}
+
+' ========================================================================
+' 2. VALUE OBJECTS - Identificadores
+' ========================================================================
+class ExposicionId {
+    - value: UUID
+}
+
+class SeccionId {
+    - value: UUID
+}
+
+class CuradorId {
+    - value: UUID
+}
+
+class InstitucionId {
+    - value: UUID
+}
+
+' ========================================================================
+' 3. VALUE OBJECTS - Conceptos del dominio
+' ========================================================================
+class Multimedia {
+    - tipo: TipoMultimedia
+    - url: String
+    - titulo: String
+    - descripcion: String
+    - geolocalizacion: String
+    - orden: Integer
+}
+
+class Seccion {
+    - id: SeccionId
+    - titulo: String
+    - descripcion: String
+    - multimedia: List<Multimedia>
+    - orden: Integer
+}
+
+' ========================================================================
+' 4. AGGREGATE ROOT
+' ========================================================================
+class ExposicionVirtual {
+    ' === IDENTIFICADORES ===
+    - id: ExposicionId
+    - curadorId: CuradorId
+    - institucionId: InstitucionId
+    
+    ' === ATRIBUTOS ===
+    - titulo: String
+    - descripcion: String
+    - secciones: List<Seccion>
+    - estado: EstadoExposicion
+    - fechaCreacion: Date
+    - fechaPublicacion: Date
+    
+    ' === MÉTODOS DE NEGOCIO ===
+    + crear(titulo: String, descripcion: String, 
+            curadorId: CuradorId, institucionId: InstitucionId): void
+    + agregarSeccion(seccion: Seccion): void
+    + editarSeccion(seccionId: SeccionId, titulo: String, descripcion: String): void
+    + eliminarSeccion(seccionId: SeccionId): void
+    + publicar(): void
+    + archivar(): void
+    + getEstado(): EstadoExposicion
+    + estaPublicada(): boolean
+}
+
+' ========================================================================
+' 5. COMMANDS (CQRS - Escritura)
+' ========================================================================
+class CrearExposicionCommand {
+    - titulo: String
+    - descripcion: String
+    - curadorId: CuradorId
+    - institucionId: InstitucionId
+}
+
+class AgregarSeccionCommand {
+    - exposicionId: ExposicionId
+    - titulo: String
+    - descripcion: String
+    - multimedia: List<Multimedia>
+}
+
+class PublicarExposicionCommand {
+    - exposicionId: ExposicionId
+}
+
+class ArchivarExposicionCommand {
+    - exposicionId: ExposicionId
+}
+
+' ========================================================================
+' 6. QUERIES (CQRS - Lectura)
+' ========================================================================
+class ObtenerExposicionQuery {
+    - exposicionId: ExposicionId
+}
+
+class ListarExposicionesPorCuradorQuery {
+    - curadorId: CuradorId
+}
+
+class ListarExposicionesPorEstadoQuery {
+    - estado: EstadoExposicion
+}
+
+' ========================================================================
+' 7. DOMAIN EVENTS
+' ========================================================================
+class ExposicionCreadaEvent {
+    - exposicionId: ExposicionId
+    - curadorId: CuradorId
+    - fechaCreacion: Date
+}
+
+class ExposicionPublicadaEvent {
+    - exposicionId: ExposicionId
+    - fechaPublicacion: Date
+}
+
+class ExposicionArchivadaEvent {
+    - exposicionId: ExposicionId
+    - fechaArchivado: Date
+}
+
+class SeccionAgregadaEvent {
+    - exposicionId: ExposicionId
+    - seccionId: SeccionId
+    - fechaAgregado: Date
+}
+
+' ========================================================================
+' 8. REPOSITORY
+' ========================================================================
+interface ExposicionVirtualRepository {
+    + save(exposicion: ExposicionVirtual): void
+    + findById(id: ExposicionId): ExposicionVirtual
+    + findByCurador(curadorId: CuradorId): List<ExposicionVirtual>
+    + findByEstado(estado: EstadoExposicion): List<ExposicionVirtual>
+    + delete(id: ExposicionId): void
+}
+
+' ========================================================================
+' 9. RELATIONSHIPS
+' ========================================================================
+
+' Aggregate Root usa Value Objects
+ExposicionVirtual --> ExposicionId
+ExposicionVirtual --> CuradorId
+ExposicionVirtual --> InstitucionId
+ExposicionVirtual --> EstadoExposicion
+ExposicionVirtual "1" *-- "0..*" Seccion : contiene >
+
+' Seccion usa Multimedia
+Seccion "1" *-- "0..*" Multimedia : contiene >
+
+' Multimedia usa Enum
+Multimedia --> TipoMultimedia
+
+' Commands usan Value Objects
+CrearExposicionCommand --> CuradorId
+CrearExposicionCommand --> InstitucionId
+
+AgregarSeccionCommand --> ExposicionId
+AgregarSeccionCommand --> Multimedia
+
+PublicarExposicionCommand --> ExposicionId
+ArchivarExposicionCommand --> ExposicionId
+
+' Queries usan Value Objects y Enums
+ObtenerExposicionQuery --> ExposicionId
+ListarExposicionesPorCuradorQuery --> CuradorId
+ListarExposicionesPorEstadoQuery --> EstadoExposicion
+
+' Domain Events usan Value Objects
+ExposicionCreadaEvent --> ExposicionId
+ExposicionCreadaEvent --> CuradorId
+
+ExposicionPublicadaEvent --> ExposicionId
+ExposicionArchivadaEvent --> ExposicionId
+SeccionAgregadaEvent --> ExposicionId
+SeccionAgregadaEvent --> SeccionId
+
+' Repository con Aggregate Root
+ExposicionVirtualRepository ..> ExposicionVirtual
+ExposicionVirtualRepository ..> ExposicionId
+ExposicionVirtualRepository ..> CuradorId
+ExposicionVirtualRepository ..> EstadoExposicion
+
+' ========================================================================
+' 10. STEREOTYPES
+' ========================================================================
+note top of ExposicionVirtual : <<Aggregate Root>>
+note left of ExposicionId : <<Value Object>>
+note left of SeccionId : <<Value Object>>
+note left of CuradorId : <<Value Object>>
+note left of InstitucionId : <<Value Object>>
+note left of Multimedia : <<Value Object>>
+note left of Seccion : <<Entity>>
+note top of CrearExposicionCommand : <<Command>>
+note top of ObtenerExposicionQuery : <<Query>>
+note top of ExposicionCreadaEvent : <<Domain Event>>
+note top of ExposicionVirtualRepository : <<Repository>>
+
+@enduml

@@ -1,0 +1,357 @@
+@startuml
+' ========================================================================
+' DOMAIN LAYER UML - México360 Patrimonio Vivo
+' Bounded Context: GestionToursVirtuales
+' Aggregate Principal: TourVirtual
+' Producto: Spring Boot + Modular Monolith + CQRS
+' ========================================================================
+
+' ========================================================================
+' 1. ENUMS
+' ========================================================================
+enum EstadoTour {
+    BORRADOR
+    EN_REVISION
+    PUBLICADO
+    ARCHIVADO
+}
+
+enum TipoMultimedia {
+    IMAGEN_360
+    VIDEO_360
+    MODELO_3D
+    AUDIO_GUIA
+    TEXTO_INFORMATIVO
+    ANIMACION
+}
+
+enum TipoPuntoInteractivo {
+    INFORMACION
+    AUDIO
+    VIDEO
+    ENLACE_EXTERNO
+    GALERIA
+}
+
+enum TipoSitio {
+    ZONA_ARQUEOLOGICA
+    MUSEO
+    PUEBLO_MAGICO
+    MONUMENTO_HISTORICO
+    PARQUE_NATURAL
+}
+
+' ========================================================================
+' 2. VALUE OBJECTS - Identificadores
+' ========================================================================
+class TourId {
+    - value: UUID
+}
+
+class SeccionId {
+    - value: UUID
+}
+
+class PuntoInteractivoId {
+    - value: UUID
+}
+
+class InstitucionId {
+    - value: UUID
+}
+
+class SitioId {
+    - value: UUID
+}
+
+' ========================================================================
+' 3. VALUE OBJECTS - Conceptos del dominio
+' ========================================================================
+class UbicacionGeografica {
+    - latitud: Double
+    - longitud: Double
+    - altitud: Double
+    - direccion: String
+    + calcularDistancia(otra: UbicacionGeografica): Double
+}
+
+class Multimedia {
+    - id: UUID
+    - tipo: TipoMultimedia
+    - url: String
+    - titulo: String
+    - descripcion: String
+    - orden: Integer
+    - duracion: Integer (segundos)
+}
+
+class PuntoInteractivo {
+    - id: PuntoInteractivoId
+    - tipo: TipoPuntoInteractivo
+    - titulo: String
+    - descripcion: String
+    - contenido: String
+    - multimedia: List<Multimedia>
+    - coordenadas: UbicacionGeografica
+    - orden: Integer
+}
+
+class Seccion {
+    - id: SeccionId
+    - titulo: String
+    - descripcion: String
+    - puntosInteractivos: List<PuntoInteractivo>
+    - orden: Integer
+}
+
+class SitioPatrimonial {
+    - id: SitioId
+    - nombre: String
+    - tipo: TipoSitio
+    - descripcion: String
+    - ubicacion: UbicacionGeografica
+    - institucionId: InstitucionId
+}
+
+' ========================================================================
+' 4. AGGREGATE ROOT
+' ========================================================================
+class TourVirtual {
+    ' === IDENTIFICADORES ===
+    - id: TourId
+    - sitioId: SitioId
+    - institucionId: InstitucionId
+    
+    ' === ATRIBUTOS ===
+    - titulo: String
+    - descripcion: String
+    - secciones: List<Seccion>
+    - estado: EstadoTour
+    - fechaCreacion: Date
+    - fechaPublicacion: Date
+    - fechaActualizacion: Date
+    - version: Long
+    
+    ' === MÉTODOS DE NEGOCIO ===
+    + crear(titulo: String, descripcion: String, 
+            sitioId: SitioId, institucionId: InstitucionId): void
+    + agregarSeccion(seccion: Seccion): void
+    + editarSeccion(seccionId: SeccionId, titulo: String, descripcion: String): void
+    + eliminarSeccion(seccionId: SeccionId): void
+    + agregarPuntoInteractivo(seccionId: SeccionId, punto: PuntoInteractivo): void
+    + publicar(): void
+    + archivar(): void
+    + actualizar(contenido: String): void
+    + getEstado(): EstadoTour
+    + estaPublicado(): boolean
+    + getSecciones(): List<Seccion>
+}
+
+' ========================================================================
+' 5. COMMANDS (CQRS - Escritura)
+' ========================================================================
+class CrearTourCommand {
+    - titulo: String
+    - descripcion: String
+    - sitioId: SitioId
+    - institucionId: InstitucionId
+}
+
+class AgregarSeccionCommand {
+    - tourId: TourId
+    - titulo: String
+    - descripcion: String
+}
+
+class AgregarPuntoInteractivoCommand {
+    - tourId: TourId
+    - seccionId: SeccionId
+    - tipo: TipoPuntoInteractivo
+    - titulo: String
+    - descripcion: String
+    - contenido: String
+    - multimedia: List<Multimedia>
+    - coordenadas: UbicacionGeografica
+}
+
+class PublicarTourCommand {
+    - tourId: TourId
+}
+
+class ArchivarTourCommand {
+    - tourId: TourId
+}
+
+class ActualizarTourCommand {
+    - tourId: TourId
+    - titulo: String
+    - descripcion: String
+}
+
+' ========================================================================
+' 6. QUERIES (CQRS - Lectura)
+' ========================================================================
+class ObtenerTourQuery {
+    - tourId: TourId
+}
+
+class ListarToursPorSitioQuery {
+    - sitioId: SitioId
+}
+
+class ListarToursPorInstitucionQuery {
+    - institucionId: InstitucionId
+}
+
+class ListarToursPorEstadoQuery {
+    - estado: EstadoTour
+}
+
+class ListarToursPublicadosQuery {
+    - fechaDesde: Date
+    - fechaHasta: Date
+}
+
+' ========================================================================
+' 7. DOMAIN EVENTS
+' ========================================================================
+class TourCreadoEvent {
+    - tourId: TourId
+    - sitioId: SitioId
+    - institucionId: InstitucionId
+    - fechaCreacion: Date
+}
+
+class TourPublicadoEvent {
+    - tourId: TourId
+    - fechaPublicacion: Date
+    - sitioId: SitioId
+}
+
+class TourArchivadoEvent {
+    - tourId: TourId
+    - fechaArchivado: Date
+}
+
+class SeccionAgregadaEvent {
+    - tourId: TourId
+    - seccionId: SeccionId
+    - fechaAgregado: Date
+}
+
+class PuntoInteractivoAgregadoEvent {
+    - tourId: TourId
+    - seccionId: SeccionId
+    - puntoId: PuntoInteractivoId
+    - fechaAgregado: Date
+}
+
+class TourActualizadoEvent {
+    - tourId: TourId
+    - fechaActualizacion: Date
+}
+
+' ========================================================================
+' 8. REPOSITORY
+' ========================================================================
+interface TourVirtualRepository {
+    + save(tour: TourVirtual): void
+    + findById(id: TourId): TourVirtual
+    + findBySitio(sitioId: SitioId): List<TourVirtual>
+    + findByInstitucion(institucionId: InstitucionId): List<TourVirtual>
+    + findByEstado(estado: EstadoTour): List<TourVirtual>
+    + findPublicados(): List<TourVirtual>
+    + delete(id: TourId): void
+}
+
+' ========================================================================
+' 9. RELATIONSHIPS
+' ========================================================================
+
+' Aggregate Root usa Value Objects
+TourVirtual --> TourId
+TourVirtual --> SitioId
+TourVirtual --> InstitucionId
+TourVirtual --> EstadoTour
+TourVirtual "1" *-- "0..*" Seccion : contiene >
+
+' Seccion contiene Puntos Interactivos
+Seccion "1" *-- "0..*" PuntoInteractivo : contiene >
+
+' PuntoInteractivo contiene Multimedia
+PuntoInteractivo "1" *-- "0..*" Multimedia : contiene >
+
+' Multimedia usa Enum
+Multimedia --> TipoMultimedia
+
+' PuntoInteractivo usa Enum
+PuntoInteractivo --> TipoPuntoInteractivo
+
+' SitioPatrimonial usa Enum
+SitioPatrimonial --> TipoSitio
+
+' Commands usan Value Objects
+CrearTourCommand --> SitioId
+CrearTourCommand --> InstitucionId
+
+AgregarSeccionCommand --> TourId
+AgregarPuntoInteractivoCommand --> TourId
+AgregarPuntoInteractivoCommand --> SeccionId
+AgregarPuntoInteractivoCommand --> TipoPuntoInteractivo
+AgregarPuntoInteractivoCommand --> Multimedia
+AgregarPuntoInteractivoCommand --> UbicacionGeografica
+
+PublicarTourCommand --> TourId
+ArchivarTourCommand --> TourId
+ActualizarTourCommand --> TourId
+
+' Queries usan Value Objects y Enums
+ObtenerTourQuery --> TourId
+ListarToursPorSitioQuery --> SitioId
+ListarToursPorInstitucionQuery --> InstitucionId
+ListarToursPorEstadoQuery --> EstadoTour
+
+' Domain Events usan Value Objects
+TourCreadoEvent --> TourId
+TourCreadoEvent --> SitioId
+TourCreadoEvent --> InstitucionId
+
+TourPublicadoEvent --> TourId
+TourPublicadoEvent --> SitioId
+
+TourArchivadoEvent --> TourId
+SeccionAgregadaEvent --> TourId
+SeccionAgregadaEvent --> SeccionId
+
+PuntoInteractivoAgregadoEvent --> TourId
+PuntoInteractivoAgregadoEvent --> SeccionId
+PuntoInteractivoAgregadoEvent --> PuntoInteractivoId
+
+TourActualizadoEvent --> TourId
+
+' Repository con Aggregate Root
+TourVirtualRepository ..> TourVirtual
+TourVirtualRepository ..> TourId
+TourVirtualRepository ..> SitioId
+TourVirtualRepository ..> InstitucionId
+TourVirtualRepository ..> EstadoTour
+
+' ========================================================================
+' 10. STEREOTYPES
+' ========================================================================
+note top of TourVirtual : <<Aggregate Root>>
+note left of TourId : <<Value Object>>
+note left of SeccionId : <<Value Object>>
+note left of PuntoInteractivoId : <<Value Object>>
+note left of InstitucionId : <<Value Object>>
+note left of SitioId : <<Value Object>>
+note left of UbicacionGeografica : <<Value Object>>
+note left of Multimedia : <<Value Object>>
+note left of PuntoInteractivo : <<Entity>>
+note left of Seccion : <<Entity>>
+note top of CrearTourCommand : <<Command>>
+note top of ObtenerTourQuery : <<Query>>
+note top of TourCreadoEvent : <<Domain Event>>
+note top of TourVirtualRepository : <<Repository>>
+
+@enduml

@@ -1,0 +1,267 @@
+@startuml
+' ========================================================================
+' APPLICATION LAYER UML - México360 Patrimonio Vivo
+' Bounded Context: GestionToursVirtuales
+' Aggregate Principal: TourVirtual
+' Producto: Spring Boot + Modular Monolith + CQRS
+' ========================================================================
+
+' ========================================================================
+' 1. COMMAND HANDLERS
+' ========================================================================
+class CrearTourHandler {
+    - repository: TourVirtualRepository
+    - eventPublisher: DomainEventPublisher
+    - sitioService: SitioService
+    + handle(command: CrearTourCommand): TourId
+}
+
+class AgregarSeccionHandler {
+    - repository: TourVirtualRepository
+    - eventPublisher: DomainEventPublisher
+    + handle(command: AgregarSeccionCommand): void
+}
+
+class AgregarPuntoInteractivoHandler {
+    - repository: TourVirtualRepository
+    - eventPublisher: DomainEventPublisher
+    + handle(command: AgregarPuntoInteractivoCommand): void
+}
+
+class PublicarTourHandler {
+    - repository: TourVirtualRepository
+    - eventPublisher: DomainEventPublisher
+    - analyticsService: AnalyticsService
+    - notificationService: NotificationService
+    + handle(command: PublicarTourCommand): void
+}
+
+class ArchivarTourHandler {
+    - repository: TourVirtualRepository
+    - eventPublisher: DomainEventPublisher
+    + handle(command: ArchivarTourCommand): void
+}
+
+class ActualizarTourHandler {
+    - repository: TourVirtualRepository
+    - eventPublisher: DomainEventPublisher
+    + handle(command: ActualizarTourCommand): void
+}
+
+' ========================================================================
+' 2. QUERY HANDLERS
+' ========================================================================
+class ObtenerTourHandler {
+    - repository: TourVirtualRepository
+    + handle(query: ObtenerTourQuery): TourVirtualDTO
+}
+
+class ListarToursPorSitioHandler {
+    - repository: TourVirtualRepository
+    + handle(query: ListarToursPorSitioQuery): List<TourVirtualDTO>
+}
+
+class ListarToursPorInstitucionHandler {
+    - repository: TourVirtualRepository
+    + handle(query: ListarToursPorInstitucionQuery): List<TourVirtualDTO>
+}
+
+class ListarToursPorEstadoHandler {
+    - repository: TourVirtualRepository
+    + handle(query: ListarToursPorEstadoQuery): List<TourVirtualDTO>
+}
+
+class ListarToursPublicadosHandler {
+    - repository: TourVirtualRepository
+    + handle(query: ListarToursPublicadosQuery): List<TourVirtualDTO>
+}
+
+' ========================================================================
+' 3. DTOS
+' ========================================================================
+class TourVirtualDTO {
+    - id: String
+    - sitioId: String
+    - institucionId: String
+    - titulo: String
+    - descripcion: String
+    - estado: String
+    - fechaCreacion: Date
+    - fechaPublicacion: Date
+    - secciones: List<SeccionDTO>
+    + fromDomain(tour: TourVirtual): TourVirtualDTO
+}
+
+class SeccionDTO {
+    - id: String
+    - titulo: String
+    - descripcion: String
+    - puntosInteractivos: List<PuntoInteractivoDTO>
+    - orden: Integer
+    + fromDomain(seccion: Seccion): SeccionDTO
+}
+
+class PuntoInteractivoDTO {
+    - id: String
+    - tipo: String
+    - titulo: String
+    - descripcion: String
+    - contenido: String
+    - multimedia: List<MultimediaDTO>
+    - coordenadas: UbicacionGeograficaDTO
+    - orden: Integer
+    + fromDomain(punto: PuntoInteractivo): PuntoInteractivoDTO
+}
+
+class MultimediaDTO {
+    - id: String
+    - tipo: String
+    - url: String
+    - titulo: String
+    - descripcion: String
+    - orden: Integer
+    - duracion: Integer
+    + fromDomain(multimedia: Multimedia): MultimediaDTO
+}
+
+class UbicacionGeograficaDTO {
+    - latitud: Double
+    - longitud: Double
+    - altitud: Double
+    - direccion: String
+    + fromDomain(ubicacion: UbicacionGeografica): UbicacionGeograficaDTO
+}
+
+' ========================================================================
+' 4. DOMAIN EVENT PUBLISHER
+' ========================================================================
+interface DomainEventPublisher {
+    + publish(event: Object): void
+    + publish(events: List<Object>): void
+}
+
+' ========================================================================
+' 5. EVENT LISTENERS
+' ========================================================================
+class TourEventListener {
+    - analyticsService: AnalyticsService
+    - notificationService: NotificationService
+    - indexService: IndexService
+    + on(event: TourPublicadoEvent): void
+    + on(event: TourCreadoEvent): void
+    + on(event: TourArchivadoEvent): void
+}
+
+' ========================================================================
+' 6. APPLICATION SERVICES (Opcional)
+' ========================================================================
+class TourApplicationService {
+    - repository: TourVirtualRepository
+    - eventPublisher: DomainEventPublisher
+    - sitioService: SitioService
+    - validationService: ValidationService
+    + crearTour(command: CrearTourCommand): TourId
+    + publicarTour(command: PublicarTourCommand): void
+    + obtenerTour(query: ObtenerTourQuery): TourVirtualDTO
+    + listarPublicados(): List<TourVirtualDTO>
+}
+
+' ========================================================================
+' 7. INFRASTRUCTURE INTERFACES
+' ========================================================================
+interface SitioService {
+    + getSitioById(id: SitioId): SitioPatrimonial
+    + getSitiosByInstitucion(institucionId: InstitucionId): List<SitioPatrimonial>
+}
+
+interface AnalyticsService {
+    + registrarVisita(tourId: TourId, usuarioId: String): void
+    + registrarTiempo(tourId: TourId, tiempo: Integer): void
+    + generarReporte(institucionId: InstitucionId): Reporte
+}
+
+interface NotificationService {
+    + notifyInstitucion(institucionId: InstitucionId, message: String): void
+    + notifyAdmin(message: String): void
+}
+
+interface IndexService {
+    + indexTour(tourId: TourId): void
+    + removeIndex(tourId: TourId): void
+}
+
+interface ValidationService {
+    + validarTour(tour: TourVirtual): boolean
+    + validarSeccion(seccion: Seccion): boolean
+    + validarPuntoInteractivo(punto: PuntoInteractivo): boolean
+}
+
+' ========================================================================
+' 8. RELATIONSHIPS
+' ========================================================================
+
+' Command Handlers
+CrearTourHandler --> TourVirtualRepository
+CrearTourHandler --> DomainEventPublisher
+CrearTourHandler --> SitioService
+
+AgregarSeccionHandler --> TourVirtualRepository
+AgregarSeccionHandler --> DomainEventPublisher
+
+AgregarPuntoInteractivoHandler --> TourVirtualRepository
+AgregarPuntoInteractivoHandler --> DomainEventPublisher
+
+PublicarTourHandler --> TourVirtualRepository
+PublicarTourHandler --> DomainEventPublisher
+PublicarTourHandler --> AnalyticsService
+PublicarTourHandler --> NotificationService
+
+ArchivarTourHandler --> TourVirtualRepository
+ArchivarTourHandler --> DomainEventPublisher
+
+ActualizarTourHandler --> TourVirtualRepository
+ActualizarTourHandler --> DomainEventPublisher
+
+' Query Handlers
+ObtenerTourHandler --> TourVirtualRepository
+ListarToursPorSitioHandler --> TourVirtualRepository
+ListarToursPorInstitucionHandler --> TourVirtualRepository
+ListarToursPorEstadoHandler --> TourVirtualRepository
+ListarToursPublicadosHandler --> TourVirtualRepository
+
+' DTOs transforman desde Domain
+TourVirtualDTO ..> TourVirtual
+SeccionDTO ..> Seccion
+PuntoInteractivoDTO ..> PuntoInteractivo
+MultimediaDTO ..> Multimedia
+UbicacionGeograficaDTO ..> UbicacionGeografica
+
+' Event Listener
+TourEventListener --> AnalyticsService
+TourEventListener --> NotificationService
+TourEventListener --> IndexService
+
+' Application Service
+TourApplicationService --> TourVirtualRepository
+TourApplicationService --> DomainEventPublisher
+TourApplicationService --> SitioService
+TourApplicationService --> ValidationService
+
+' Infrastructure Services
+SitioService ..> SitioPatrimonial
+AnalyticsService ..> Reporte
+
+' ========================================================================
+' 9. STEREOTYPES
+' ========================================================================
+note top of CrearTourHandler : <<Command Handler>>
+note top of ObtenerTourHandler : <<Query Handler>>
+note top of TourVirtualDTO : <<DTO>>
+note top of DomainEventPublisher : <<Domain Service>>
+note top of TourEventListener : <<Event Listener>>
+note top of TourApplicationService : <<Application Service>>
+note top of SitioService : <<Infrastructure Service>>
+note top of AnalyticsService : <<Infrastructure Service>>
+note top of NotificationService : <<Infrastructure Service>>
+
+@enduml
