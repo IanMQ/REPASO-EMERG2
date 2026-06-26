@@ -1,0 +1,187 @@
+@startuml
+' ========================================================================
+' Título: Domain Layer UML Class Diagram (Versión Mínima)
+' Bounded Context: Gestión de Cartas de Garantía
+' Producto: Spring Boot
+' ========================================================================
+
+' ========================================================================
+' ENUMS
+' ========================================================================
+enum EstadoCarta {
+    SOLICITADA
+    EN_VALIDACION
+    EN_REVISION
+    OBSERVADA
+    APROBADA
+    RECHAZADA
+}
+
+' ========================================================================
+' VALUE OBJECTS
+' ========================================================================
+class CartaGarantiaId {
+    - value: UUID
+}
+
+class PacienteId {
+    - value: UUID
+}
+
+class ClinicaId {
+    - value: UUID
+}
+
+class MedicoId {
+    - value: UUID
+}
+
+class Procedimiento {
+    - codigo: String
+    - nombre: String
+    - complejidad: String
+}
+
+class Monto {
+    - valor: Double
+    - moneda: String
+}
+
+' ========================================================================
+' AGGREGATE ROOT
+' ========================================================================
+class CartaGarantia {
+    - id: CartaGarantiaId
+    - pacienteId: PacienteId
+    - clinicaId: ClinicaId
+    - procedimiento: Procedimiento
+    - montoSolicitado: Monto
+    - estado: EstadoCarta
+    - fechaSolicitud: Date
+    - fechaResolucion: Date
+    - observaciones: String
+    
+    + solicitar(pacienteId: PacienteId, clinicaId: ClinicaId, 
+                procedimiento: Procedimiento, monto: Monto): void
+    + validarCobertura(valido: boolean): void
+    + asignarRevisor(medicoId: MedicoId): void
+    + aprobar(obs: String): void
+    + rechazar(motivo: String): void
+    + getEstado(): EstadoCarta
+}
+
+' ========================================================================
+' COMMANDS (CQRS - Escritura)
+' ========================================================================
+class SolicitarCartaCommand {
+    - pacienteId: PacienteId
+    - clinicaId: ClinicaId
+    - procedimiento: Procedimiento
+    - monto: Monto
+}
+
+class AprobarCartaCommand {
+    - cartaId: CartaGarantiaId
+    - observaciones: String
+}
+
+class RechazarCartaCommand {
+    - cartaId: CartaGarantiaId
+    - motivo: String
+}
+
+' ========================================================================
+' QUERIES (CQRS - Lectura)
+' ========================================================================
+class ObtenerCartaQuery {
+    - cartaId: CartaGarantiaId
+}
+
+class ListarCartasQuery {
+    - pacienteId: PacienteId
+}
+
+' ========================================================================
+' DOMAIN EVENTS
+' ========================================================================
+class CartaSolicitadaEvent {
+    - cartaId: CartaGarantiaId
+    - pacienteId: PacienteId
+    - clinicaId: ClinicaId
+    - fechaSolicitud: Date
+}
+
+class CartaAprobadaEvent {
+    - cartaId: CartaGarantiaId
+    - fechaResolucion: Date
+}
+
+class CartaRechazadaEvent {
+    - cartaId: CartaGarantiaId
+    - fechaResolucion: Date
+    - motivo: String
+}
+
+' ========================================================================
+' REPOSITORY
+' ========================================================================
+interface CartaGarantiaRepository {
+    + save(carta: CartaGarantia): void
+    + findById(id: CartaGarantiaId): CartaGarantia
+    + findByPaciente(pacienteId: PacienteId): List<CartaGarantia>
+}
+
+' ========================================================================
+' RELATIONSHIPS
+' ========================================================================
+
+' Aggregate Root usa Value Objects
+CartaGarantia --> CartaGarantiaId
+CartaGarantia --> PacienteId
+CartaGarantia --> ClinicaId
+CartaGarantia --> Procedimiento
+CartaGarantia --> Monto
+CartaGarantia --> EstadoCarta
+
+' Commands usan Value Objects
+SolicitarCartaCommand --> PacienteId
+SolicitarCartaCommand --> ClinicaId
+SolicitarCartaCommand --> Procedimiento
+SolicitarCartaCommand --> Monto
+
+AprobarCartaCommand --> CartaGarantiaId
+RechazarCartaCommand --> CartaGarantiaId
+
+' Queries usan Value Objects
+ObtenerCartaQuery --> CartaGarantiaId
+ListarCartasQuery --> PacienteId
+
+' Domain Events usan Value Objects
+CartaSolicitadaEvent --> CartaGarantiaId
+CartaSolicitadaEvent --> PacienteId
+CartaSolicitadaEvent --> ClinicaId
+
+CartaAprobadaEvent --> CartaGarantiaId
+CartaRechazadaEvent --> CartaGarantiaId
+
+' Repository con Aggregate Root
+CartaGarantiaRepository ..> CartaGarantia
+CartaGarantiaRepository ..> CartaGarantiaId
+CartaGarantiaRepository ..> PacienteId
+
+' ========================================================================
+' NOTES / STEREOTYPES (Cumple con la nomenclatura UML)
+' ========================================================================
+note top of CartaGarantia : <<Aggregate Root>>
+note left of CartaGarantiaId : <<Value Object>>
+note left of PacienteId : <<Value Object>>
+note left of ClinicaId : <<Value Object>>
+note left of MedicoId : <<Value Object>>
+note left of Procedimiento : <<Value Object>>
+note left of Monto : <<Value Object>>
+note top of SolicitarCartaCommand : <<Command>>
+note top of ObtenerCartaQuery : <<Query>>
+note top of CartaSolicitadaEvent : <<Domain Event>>
+note top of CartaGarantiaRepository : <<Repository>>
+
+@enduml
